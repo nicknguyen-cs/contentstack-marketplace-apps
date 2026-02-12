@@ -1,0 +1,119 @@
+.sidebar-ai-gen {
+  padding: 16px;
+}
+
+.sidebar-ai-gen-loading {
+  margin: 0;
+  color: var(--app-text-muted, #647787);
+}
+
+.sidebar-ai-gen-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  margin: 0 0 8px 0;
+}
+
+.sidebar-ai-gen-desc {
+  font-size: 13px;
+  color: var(--app-text-muted, #647787);
+  margin: 0 0 16px 0;
+  line-height: 1.45;
+}
+
+.sidebar-ai-gen-topic-wrap {
+  margin-bottom: 16px;
+}
+
+.sidebar-ai-gen-topic-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  margin-bottom: 6px;
+}
+
+.sidebar-ai-gen-topic-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--app-border, #e6e9ed);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.sidebar-ai-gen-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-ai-gen-progress {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--app-bg-muted, #f5f7fa);
+  border-radius: 6px;
+  border: 1px solid var(--app-border, #e6e9ed);
+}
+
+.sidebar-ai-gen-progress-phase {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  text-transform: capitalize;
+}
+
+.sidebar-ai-gen-progress-detail {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  color: var(--app-text-muted, #647787);
+  line-height: 1.4;
+}
+
+.sidebar-ai-gen-message {
+  margin-top: 12px;
+}
+
+.sidebar-ai-gen-blocks {
+  margin-bottom: 16px;
+}
+
+.sidebar-ai-gen-blocks-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  margin: 0 0 8px 0;
+}
+
+.sidebar-ai-gen-blocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-ai-gen-block-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--app-text, #2c3e50);
+  cursor: pointer;
+}
+
+.sidebar-ai-gen-block-option input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.sidebar-ai-gen-block-option input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+
+.sidebar-ai-gen-block-title {
+  flex: 1;
+}
+
+.sidebar-ai-gen-block-count {
+  font-size: 12px;
+  color: var(--app-text-muted, #647787);
+}

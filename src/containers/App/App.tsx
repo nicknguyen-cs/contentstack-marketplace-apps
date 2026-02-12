@@ -6,6 +6,7 @@ import { EntrySidebarExtensionProvider } from "../../common/providers/EntrySideb
 import { AppConfigurationExtensionProvider } from "../../common/providers/AppConfigurationExtensionProvider";
 import { CustomFieldExtensionProvider } from "../../common/providers/CustomFieldExtensionProvider";
 import FieldModifierExtension from "../FieldModifier/FieldModifier";
+import EntryDraftSidebar from "../SidebarWidget/EntrySidebar";
 
 /**
  * All the routes are Lazy loaded.
@@ -22,6 +23,7 @@ const GlobalFullPageExtension = React.lazy(() => import("../GlobalFullPage/Globa
 const PageNotFound = React.lazy(() => import("../404/404"));
 const DefaultPage = React.lazy(() => import("../index"));
 const ContentTypeSidebarExtension = React.lazy(() => import("../ContentTypeSidebar/ContentTypeSidebar"));
+const SidebarWidgetAiGenExtension = React.lazy(() => import("../SidebarWidgetAiGen/SidebarWidgetAiGen"));
 
 function App() {
   return (
@@ -30,7 +32,7 @@ function App() {
         <Routes>
           <Route path="/" element={<DefaultPage />} />
           <Route
-            path="/custom-field"
+            path="/custom-field-collaboration"
             element={
               <Suspense>
                 <CustomFieldExtensionProvider>
@@ -104,6 +106,26 @@ function App() {
             element={
               <Suspense>
                 <ContentTypeSidebarExtension />
+              </Suspense>
+            }
+          />
+           <Route
+            path="/sidebar-draft"
+            element={
+              <Suspense>
+                <EntrySidebarExtensionProvider>
+                  <EntryDraftSidebar />
+                </EntrySidebarExtensionProvider>
+              </Suspense>
+            }
+          />
+          <Route
+            path="/sidebar-ai-generate"
+            element={
+              <Suspense>
+                <EntrySidebarExtensionProvider>
+                  <SidebarWidgetAiGenExtension />
+                </EntrySidebarExtensionProvider>
               </Suspense>
             }
           />

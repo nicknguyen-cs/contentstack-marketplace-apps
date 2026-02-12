@@ -1,0 +1,12 @@
+{
+  "name": "collab-websocket-server",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js",
+    "demo": "node index.js & ngrok http 3001 --url nearby-mutt-divine.ngrok-free.app; kill %1"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.4"
+  }
+}

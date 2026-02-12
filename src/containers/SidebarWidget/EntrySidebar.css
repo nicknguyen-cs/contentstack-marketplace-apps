@@ -1,35 +1,66 @@
-
-.layout-container {
-  margin: none;
+.entry-draft-sidebar {
+  padding: 16px;
 }
 
-.ui-location-wrapper {
-  align-items: center;
-  gap: 1.9375rem;
-  flex: 1 0 0;
+.entry-draft-sidebar-loading {
+  margin: 0;
+  color: var(--app-text-muted, #647787);
 }
 
-.ui-location {
-  margin: auto;
-  padding: 1rem 1rem;
-  align-items: flex-start;
-  gap: 0.625rem;
-  flex: 1 0 0;
+.entry-draft-sidebar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  margin: 0 0 8px 0;
 }
 
-.logo-container {
+.entry-draft-sidebar-desc {
+  font-size: 13px;
+  color: var(--app-text-muted, #647787);
+  margin: 0 0 16px 0;
+  line-height: 1.45;
+}
+
+.entry-draft-sidebar-status-wrap {
+  margin-bottom: 16px;
+}
+
+.entry-draft-sidebar-status {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--app-bg-secondary, #f4f6f9);
+  border: 1px solid var(--app-border, #e6e9ed);
+}
+
+.entry-draft-sidebar-status-head {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
-.config-container {
-  gap: 0.5rem;
-  align-self: stretch;
+.entry-draft-sidebar-status-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
 }
 
-.label {
-  font-size: 0.825rem;
+.entry-draft-sidebar-status-time {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--app-text-muted, #647787);
+  line-height: 1.4;
 }
 
-.info {
-  font-size: 0.825rem;
+.entry-draft-sidebar-empty {
+  margin: 0 0 16px 0;
+  font-size: 12px;
+  color: var(--app-text-muted, #647787);
+}
+
+.entry-draft-sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
