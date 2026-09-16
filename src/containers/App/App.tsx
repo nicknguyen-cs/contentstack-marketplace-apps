@@ -23,6 +23,7 @@ const GlobalFullPageExtension = React.lazy(() => import("../GlobalFullPage/Globa
 const PageNotFound = React.lazy(() => import("../404/404"));
 const DefaultPage = React.lazy(() => import("../index"));
 const ContentTypeSidebarExtension = React.lazy(() => import("../ContentTypeSidebar/ContentTypeSidebar"));
+const FindReplaceExtension = React.lazy(() => import("../FindReplace/FindReplace"));
 const SidebarWidgetAiGenExtension = React.lazy(() => import("../SidebarWidgetAiGen/SidebarWidgetAiGen"));
 
 function App() {
@@ -74,6 +75,14 @@ function App() {
             element={
               <Suspense>
                 <StackDashboardExtension />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/find-replace"
+            element={
+              <Suspense>
+                <FindReplaceExtension />
               </Suspense>
             }
           />

@@ -1,0 +1,100 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 43, 54, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.dialog {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 20px;
+  width: 440px;
+  max-width: calc(100vw - 48px);
+  box-shadow: 0 12px 32px rgba(28, 43, 54, 0.25);
+  color: #1c2b36;
+}
+
+.dialog h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.dialogBody {
+  font-size: 13px;
+  color: #3d4b57;
+  line-height: 1.5;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.input {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid #dde3ee;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1c2b36;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #6c5ce7;
+}
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #dde3ee;
+  background: #ffffff;
+  color: #1c2b36;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  background: #f4f5f7;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnPrimary {
+  background: #6c5ce7;
+  border-color: #6c5ce7;
+  color: #ffffff;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  background: #5a4bd6;
+}
+
+.btnDanger {
+  background: #d0021b;
+  border-color: #d0021b;
+  color: #ffffff;
+}
+
+.btnDanger:hover:not(:disabled) {
+  background: #b00117;
+}
+
+.mono {
+  font-family: "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+}

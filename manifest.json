@@ -30,6 +30,13 @@
             "signed": false,
             "enabled": true,
             "default_width": "half"
+          },
+          {
+            "path": "/find-replace",
+            "signed": false,
+            "enabled": true,
+            "default_width": "full",
+            "name": "Find & Replace"
           }
         ]
       },
