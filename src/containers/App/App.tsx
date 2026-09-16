@@ -23,8 +23,14 @@ const GlobalFullPageExtension = React.lazy(() => import("../GlobalFullPage/Globa
 const PageNotFound = React.lazy(() => import("../404/404"));
 const DefaultPage = React.lazy(() => import("../index"));
 const ContentTypeSidebarExtension = React.lazy(() => import("../ContentTypeSidebar/ContentTypeSidebar"));
-const FindReplaceExtension = React.lazy(() => import("../FindReplace/FindReplace"));
 const SidebarWidgetAiGenExtension = React.lazy(() => import("../SidebarWidgetAiGen/SidebarWidgetAiGen"));
+const CustomDashboardExtension = React.lazy(() => import("../CustomDashboard/CustomDashboard"));
+const DynamicUrlExtension = React.lazy(() => import("../DynamicUrl/DynamicUrl"));
+const CustomReferenceFieldExtension = React.lazy(() => import("../CustomReferenceField/CustomReferenceField"));
+const BranchConsoleExtension = React.lazy(() => import("../BranchConsole/BranchConsole"));
+const SidebarLocalizeFromExtension = React.lazy(() => import("../SidebarLocalizeFrom/SidebarLocalizeFrom"));
+const SidebarWidgetSeoPromptsExtension = React.lazy(() => import("../SidebarWidgetSeoPrompts/SidebarWidgetSeoPrompts"));
+const FindReplaceExtension = React.lazy(() => import("../FindReplace/FindReplace"));
 
 function App() {
   return (
@@ -79,14 +85,6 @@ function App() {
             }
           />
           <Route
-            path="/find-replace"
-            element={
-              <Suspense>
-                <FindReplaceExtension />
-              </Suspense>
-            }
-          />
-          <Route
             path="/full-page"
             element={
               <Suspense>
@@ -134,6 +132,68 @@ function App() {
               <Suspense>
                 <EntrySidebarExtensionProvider>
                   <SidebarWidgetAiGenExtension />
+                </EntrySidebarExtensionProvider>
+              </Suspense>
+            }
+          />
+          <Route
+            path="/sidebar-seo-prompts"
+            element={
+              <Suspense>
+                <EntrySidebarExtensionProvider>
+                  <SidebarWidgetSeoPromptsExtension />
+                </EntrySidebarExtensionProvider>
+              </Suspense>
+            }
+          />
+          <Route
+            path="/custom-dashboard"
+            element={
+              <Suspense>
+                <CustomDashboardExtension />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/find-replace"
+            element={
+              <Suspense>
+                <FindReplaceExtension />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/dynamic-url"
+            element={
+              <Suspense>
+                <CustomFieldExtensionProvider>
+                  <DynamicUrlExtension />
+                </CustomFieldExtensionProvider>
+              </Suspense>
+            }
+          />
+          <Route
+            path="/custom-reference-field"
+            element={
+              <Suspense>
+                <CustomReferenceFieldExtension />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/branch-console"
+            element={
+              <Suspense>
+                <BranchConsoleExtension />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/sidebar-localize-from"
+            element={
+              <Suspense>
+                <EntrySidebarExtensionProvider>
+                  <SidebarLocalizeFromExtension />
                 </EntrySidebarExtensionProvider>
               </Suspense>
             }

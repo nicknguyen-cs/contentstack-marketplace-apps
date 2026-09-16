@@ -19,6 +19,14 @@
             "signed": false,
             "enabled": true,
             "data_type": "json"
+          },
+          {
+            "multiple": false,
+            "path": "/dynamic-url",
+            "signed": false,
+            "enabled": true,
+            "data_type": "text",
+            "name": "Dynamic URL"
           }
         ]
       },
@@ -26,10 +34,10 @@
         "type": "cs.cm.stack.dashboard",
         "meta": [
           {
-            "path": "/stack-dashboard",
+            "path": "/custom-dashboard",
             "signed": false,
             "enabled": true,
-            "default_width": "half"
+            "default_width": "full"
           },
           {
             "path": "/find-replace",
@@ -69,6 +77,18 @@
             "path": "/entry-sidebar",
             "signed": false,
             "enabled": true
+          },
+          {
+            "path": "/sidebar-seo-prompts",
+            "signed": false,
+            "enabled": true,
+            "name": "SEO/AEO/GEO Demo Prompts"
+          },
+          {
+            "path": "/sidebar-localize-from",
+            "signed": false,
+            "enabled": true,
+            "name": "Localize From Locale"
           }
         ]
       },
@@ -79,6 +99,12 @@
             "path": "/full-page",
             "signed": false,
             "enabled": true
+          },
+          {
+            "path": "/branch-console",
+            "signed": false,
+            "enabled": true,
+            "name": "Branch Console"
           }
         ]
       },

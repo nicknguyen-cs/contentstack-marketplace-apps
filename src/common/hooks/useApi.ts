@@ -37,20 +37,26 @@ export const useAppSdkApi = () => {
     }
     
     const cmaUrl = `${appSdk.endpoints.CMA}${cmaEndpoint}`;
+    // Spread options first so a caller-supplied headers object merges with the
+    // defaults instead of replacing them (which would drop api_key).
     const requestOptions: RequestInit = {
-      headers: { 
-        'Content-Type': 'application/json',
-        ...options?.headers 
-      },
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'api_key': appSdk.ids.apiKey,
+        ...options?.headers
+      },
     };
 
     const apiResponse = await appSdk.api(cmaUrl, requestOptions);
-    
+
     if (!apiResponse.ok) {
-      throw new Error(`Contentstack CMA API Error: ${apiResponse.status} ${apiResponse.statusText}`);
+      const errorBody = await apiResponse.text().catch(() => "");
+      throw new Error(
+        `Contentstack CMA API Error: ${apiResponse.status} ${apiResponse.statusText}${errorBody ? ` — ${errorBody}` : ""}`
+      );
     }
-    
+
     return apiResponse;
   }, [appSdk]);
 
@@ -68,19 +74,22 @@ export const useAppSdkApi = () => {
     }
     
     const requestOptions: RequestInit = {
-      headers: { 
-        'Content-Type': 'application/json',
-        ...options?.headers 
-      },
       ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers
+      },
     };
 
     const apiResponse = await appSdk.api(apiUrl, requestOptions);
-    
+
     if (!apiResponse.ok) {
-      throw new Error(`Direct API Error: ${apiResponse.status} ${apiResponse.statusText}`);
+      const errorBody = await apiResponse.text().catch(() => "");
+      throw new Error(
+        `Direct API Error: ${apiResponse.status} ${apiResponse.statusText}${errorBody ? ` — ${errorBody}` : ""}`
+      );
     }
-    
+
     return apiResponse;
   }, [appSdk]);
 

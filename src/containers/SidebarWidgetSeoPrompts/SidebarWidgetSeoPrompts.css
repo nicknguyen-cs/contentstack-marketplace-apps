@@ -1,0 +1,356 @@
+.seo-prompts {
+  padding: 16px;
+}
+
+.seo-prompts-loading {
+  margin: 0;
+  color: var(--app-text-muted, #647787);
+}
+
+.seo-prompts-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  margin: 0 0 8px 0;
+}
+
+.seo-prompts-desc {
+  font-size: 13px;
+  color: var(--app-text-muted, #647787);
+  margin: 0 0 16px 0;
+  line-height: 1.45;
+}
+
+.seo-prompts-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.seo-prompts-progress {
+  margin: 12px 0 0 0;
+  font-size: 13px;
+  color: var(--app-text-muted, #647787);
+  line-height: 1.45;
+}
+
+/* —— Demo modal —— */
+.seo-cmp-intro {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  color: var(--app-text-muted, #647787);
+  line-height: 1.5;
+}
+
+/* Scoreboard */
+.seo-cmp-scoreboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 18px;
+  margin-bottom: 20px;
+  border: 1px solid var(--app-border, #e6e9ed);
+  border-radius: 10px;
+  background: var(--app-bg-muted, #f9fafb);
+}
+
+.seo-cmp-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 120px;
+}
+
+.seo-cmp-stat-num {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.seo-cmp-stat--before .seo-cmp-stat-num {
+  color: #98a4b0;
+}
+
+.seo-cmp-stat--after .seo-cmp-stat-num {
+  color: #0a7340;
+}
+
+.seo-cmp-stat-label {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text-muted, #647787);
+}
+
+.seo-cmp-arrow {
+  font-size: 28px;
+  color: var(--app-text-muted, #647787);
+}
+
+/* Per-question A/B */
+.seo-cmp-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.seo-cmp-q-text {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  line-height: 1.4;
+}
+
+.seo-cmp-mark {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.seo-cmp-mark--yes {
+  color: #0a7340;
+}
+
+.seo-cmp-mark--no {
+  color: #9aa5b1;
+}
+
+/* Generated artifact */
+.seo-cmp-section-title {
+  margin: 8px 0 4px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+}
+
+.seo-cmp-section-sub {
+  margin: 0 0 14px 0;
+  font-size: 13px;
+  color: var(--app-text-muted, #647787);
+}
+
+.seo-art {
+  border: 1px solid var(--app-border, #e6e9ed);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.seo-art-block {
+  margin-bottom: 14px;
+}
+
+.seo-art-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .seo-art-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
+.seo-art-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text-muted, #647787);
+  margin-bottom: 4px;
+}
+
+.seo-art-count {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #98a4b0;
+}
+
+.seo-art-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-text, #2c3e50);
+}
+
+.seo-art-facts {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--app-text, #2c3e50);
+}
+
+.seo-art-faq {
+  margin: 0;
+}
+
+.seo-art-faq dt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--app-text, #2c3e50);
+  margin-top: 8px;
+}
+
+.seo-art-faq dt:first-child {
+  margin-top: 0;
+}
+
+.seo-art-faq dd {
+  margin: 2px 0 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--app-text-muted, #647787);
+}
+
+.seo-cmp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 720px) {
+  .seo-cmp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.seo-cmp-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--app-border, #e6e9ed);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.seo-cmp-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--app-bg-muted, #f5f7fa);
+  border-bottom: 1px solid var(--app-border, #e6e9ed);
+}
+
+.seo-cmp-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.seo-cmp-badge--before {
+  color: #647787;
+  background: #fff;
+  border: 1px solid var(--app-border, #e6e9ed);
+}
+
+.seo-cmp-badge--after {
+  color: #0a7340;
+  background: #e7f6ec;
+  border: 1px solid #b6e3c7;
+}
+
+.seo-cmp-col-sub {
+  font-size: 12px;
+  color: var(--app-text-muted, #647787);
+}
+
+.seo-cmp-answer {
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--app-text, #2c3e50);
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+
+/* —— Rendered markdown inside answers —— */
+.seo-cmp-answer .md-p {
+  margin: 0 0 8px;
+}
+
+.seo-cmp-answer .md-p:last-child {
+  margin-bottom: 0;
+}
+
+.seo-cmp-answer .md-h {
+  font-weight: 600;
+  margin: 12px 0 4px;
+  color: var(--app-text, #2c3e50);
+}
+
+.seo-cmp-answer .md-h1,
+.seo-cmp-answer .md-h2 {
+  font-size: 14px;
+}
+
+.seo-cmp-answer .md-h3,
+.seo-cmp-answer .md-h4,
+.seo-cmp-answer .md-h5,
+.seo-cmp-answer .md-h6 {
+  font-size: 13px;
+}
+
+.seo-cmp-answer .md-ul,
+.seo-cmp-answer .md-ol {
+  margin: 4px 0 8px;
+  padding-left: 20px;
+}
+
+.seo-cmp-answer .md-ul li,
+.seo-cmp-answer .md-ol li {
+  margin: 2px 0;
+}
+
+.seo-cmp-answer .md-code {
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.seo-cmp-answer .md-pre {
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  overflow-x: auto;
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.seo-cmp-prompt {
+  border-top: 1px solid var(--app-border, #e6e9ed);
+  font-size: 12px;
+}
+
+.seo-cmp-prompt summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--app-text-muted, #647787);
+  user-select: none;
+}
+
+.seo-cmp-prompt-pre {
+  margin: 0;
+  padding: 0 12px 12px;
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--app-text-muted, #647787);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

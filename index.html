@@ -9,6 +9,14 @@
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
     <title>ContentStack Marketplace Boilerplate</title>
+    <!--
+      Must be the FIRST stylesheet in the document. Venus' InfiniteScrollTable
+      writes scrollbar rules into document.styleSheets[0]; if that slot is a
+      cross-origin sheet (e.g. the Google Fonts links below), reading .cssRules
+      throws "SecurityError: Cannot access rules". This same-origin sheet keeps
+      styleSheets[0] writable.
+    -->
+    <style id="venus-stylesheet-slot"></style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />

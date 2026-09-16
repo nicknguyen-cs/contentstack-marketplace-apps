@@ -94,9 +94,6 @@ const AppConfigurationExtension = () => {
           const appConfiguration = await installationRef.current.getInstallationData();
           const config = appConfiguration.configuration ?? {};
           const serverConfig = appConfiguration.serverConfiguration ?? {};
-          // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/6637642b-38c0-49ee-814d-f674bf9ffafd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'AppConfiguration.tsx:getInstallationData', message: 'Loaded installation data', data: { configKeys: Object.keys(config), serverConfigKeys: Object.keys(serverConfig) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3,H4' }) }).catch(() => { });
-          // #endregion
 
           // Read canonical keys with one-time fallback for old installs (stackApiKey, managementToken, openai_api_key, etc.)
           const apiKey = ((config.apiKey ?? config.stackApiKey) as string || "").trim();

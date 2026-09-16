@@ -1,0 +1,144 @@
+.shell {
+  padding: 12px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1c2b36;
+  font-size: 13px;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.muted {
+  color: #6c7589;
+  font-size: 12px;
+}
+
+.mono {
+  font-family: "SF Mono", SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+}
+
+.statusBanner {
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.statusInheriting {
+  background: #fdf1dc;
+  border: 1px solid #f3ddb0;
+  color: #7a5410;
+}
+
+.statusLocalized {
+  background: #e6f4e0;
+  border: 1px solid #c5e3b4;
+  color: #2c5203;
+}
+
+.banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin: 12px 0;
+  line-height: 1.5;
+}
+
+.bannerSuccess {
+  background: #e6f4e0;
+  color: #2c5203;
+  border: 1px solid #c5e3b4;
+}
+
+.bannerError {
+  background: #fbe4e7;
+  color: #8f0113;
+  border: 1px solid #f3bcc4;
+}
+
+.bannerClose {
+  appearance: none;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  color: #6c7589;
+}
+
+.select {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid #dde3ee;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1c2b36;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #6c5ce7;
+}
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #6c5ce7;
+  background: #6c5ce7;
+  color: #ffffff;
+  cursor: pointer;
+  width: 100%;
+}
+
+.btn:hover:not(:disabled) {
+  background: #5a4bd6;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.empty {
+  padding: 20px 8px;
+  text-align: center;
+  color: #6c7589;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.footnote {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #6c7589;
+  line-height: 1.5;
+}

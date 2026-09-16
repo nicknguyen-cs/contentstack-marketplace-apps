@@ -1,0 +1,30 @@
+/*
+ * Nested-scrollbar fix for InfiniteScrollTable.
+ *
+ * Venus ships two rules that force the table to occupy a full viewport
+ * regardless of how many rows it holds:
+ *   .Table          { min-height: 500px }   — floors the wrapper
+ *   .Table__content { height: 100vh }       — pins the scroll viewport to 100vh
+ *
+ * The 100vh viewport is the real problem: the body is always ~1 viewport tall,
+ * so the host iframe (or, in the entry sidebar, the native content-follow sizing)
+ * gets an outer scrollbar, while the virtualized row list keeps its own inner
+ * scrollbar — the "scrollbar inside a scrollbar" wonkiness.
+ *
+ * We scope these overrides to our wrapper so they only affect this table. The
+ * component sizes `tableHeight` to exactly fit the current page's rows, so once
+ * the viewport is allowed to collapse to content there is a single, correct
+ * height and neither scrollbar appears. The wrapper selector (0,2,0) outranks
+ * Venus's bare class selectors (0,1,0), so no !important is needed.
+ */
+
+.infinite-table-example .Table {
+  /* collapse to content instead of a 500px floor */
+  min-height: 0;
+}
+
+.infinite-table-example .Table__content {
+  /* the killer rule: let the scroll viewport match the row list (tableHeight)
+     instead of always claiming a full viewport */
+  height: auto;
+}
