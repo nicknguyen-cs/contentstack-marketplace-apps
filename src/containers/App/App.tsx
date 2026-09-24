@@ -31,6 +31,7 @@ const BranchConsoleExtension = React.lazy(() => import("../BranchConsole/BranchC
 const SidebarLocalizeFromExtension = React.lazy(() => import("../SidebarLocalizeFrom/SidebarLocalizeFrom"));
 const SidebarWidgetSeoPromptsExtension = React.lazy(() => import("../SidebarWidgetSeoPrompts/SidebarWidgetSeoPrompts"));
 const FindReplaceExtension = React.lazy(() => import("../FindReplace/FindReplace"));
+const SidebarLocaleStatusExtension = React.lazy(() => import("../SidebarLocaleStatus/SidebarLocaleStatus"));
 
 function App() {
   return (
@@ -194,6 +195,16 @@ function App() {
               <Suspense>
                 <EntrySidebarExtensionProvider>
                   <SidebarLocalizeFromExtension />
+                </EntrySidebarExtensionProvider>
+              </Suspense>
+            }
+          />
+          <Route
+            path="/sidebar-locale-status"
+            element={
+              <Suspense>
+                <EntrySidebarExtensionProvider>
+                  <SidebarLocaleStatusExtension />
                 </EntrySidebarExtensionProvider>
               </Suspense>
             }

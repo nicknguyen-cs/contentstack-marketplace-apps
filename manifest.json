@@ -89,6 +89,12 @@
             "signed": false,
             "enabled": true,
             "name": "Localize From Locale"
+          },
+          {
+            "path": "/sidebar-locale-status",
+            "signed": false,
+            "enabled": true,
+            "name": "Locale Status"
           }
         ]
       },
@@ -115,7 +121,9 @@
             "path": "/field-modifier",
             "signed": false,
             "enabled": true,
-            "allowed_types": ["$all"]
+            "allowed_types": [
+              "$all"
+            ]
           }
         ]
       },
