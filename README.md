@@ -4,6 +4,12 @@ A collection of apps for the [Contentstack](https://www.contentstack.com) CMS, b
 
 Each app has its own README next to its code. This page is the map.
 
+> **Proof of concept. Not production ready. Use at your own risk.**
+>
+> These apps are experiments and demos built to explore what the Contentstack App SDK can do. They have not been hardened, load-tested, or security-reviewed. Several write to entries, upload assets, or merge branch schemas, so try them on a sandbox stack first and read each app's README for its limitations before pointing one at real content. No warranty is given, and no support is implied.
+>
+> The code and documentation in this repo were written with AI assistance (Claude), reviewed and directed by a human.
+
 ## The apps
 
 ### Entry sidebar widgets
