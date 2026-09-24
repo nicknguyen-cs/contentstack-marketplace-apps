@@ -2,6 +2,17 @@
 
 A sidebar widget for Contentstack that uses OpenAI to generate on-topic content for all supported fields in an entry. Open any entry, type a topic (or leave blank for a random one), and click **Generate with AI** to populate fields instantly.
 
+## Where it runs
+
+| | |
+|---|---|
+| UI location | Entry sidebar (`cs.cm.stack.sidebar`) |
+| Route | `/sidebar-ai-generate` |
+| Manifest name | AI Content Generator |
+| Provider | `EntrySidebarExtensionProvider` |
+
+The OpenAI call is made from the browser with the configured key. Fine for internal use; put a proxy in front of it for anything shared.
+
 ## Features
 
 - **One-click generation** for text, number, boolean, date, link, select, and Rich Text (JSON RTE) fields

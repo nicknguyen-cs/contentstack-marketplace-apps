@@ -55,19 +55,27 @@ Access SDK functionality through hooks in `src/common/hooks/`:
 
 ### Route-based UI Locations
 
-Routes in `App.tsx` map to Contentstack UI locations. Each route lazy-loads its component:
+Routes in `App.tsx` map to Contentstack UI locations. Each route lazy-loads its component. Every custom app has a README in its folder; the root README.md is the catalog.
 
 | Route | Component | UI Location |
 |-------|-----------|-------------|
-| `/custom-field` | CustomField | Custom field in content type |
-| `/entry-sidebar` | EntrySidebar | Entry editor sidebar |
+| `/sidebar-locale-status` | SidebarLocaleStatus | Entry sidebar: per-locale localization, publish, workflow status |
+| `/sidebar-localize-from` | SidebarLocalizeFrom | Entry sidebar: localize from a chosen source locale |
+| `/entry-sidebar`, `/sidebar-draft` | SidebarWidget (EntrySidebar) | Entry sidebar: save/load draft to an asset |
+| `/sidebar-ai-generate` | SidebarWidgetAiGen | Entry sidebar: OpenAI content generation |
+| `/sidebar-seo-prompts` | SidebarWidgetSeoPrompts | Entry sidebar: SEO/AEO/GEO demo |
+| `/custom-field-collaboration` | CustomField | Custom field: live collaboration (needs `server/`) |
+| `/dynamic-url` | DynamicUrl | Custom field: URL composed from parent, taxonomy, title |
+| `/custom-reference-field` | CustomReferenceField | Custom field: reference picker |
+| `/find-replace` | FindReplace | Stack dashboard: find & replace |
+| `/custom-dashboard` | CustomDashboard | Stack dashboard: widget grid |
+| `/branch-console` | BranchConsole | Full page: branch compare/merge/revert |
 | `/app-configuration` | AppConfiguration | App settings page |
-| `/asset-sidebar` | AssetSidebar | Asset editor sidebar |
-| `/stack-dashboard` | StackDashboard | Stack dashboard widget |
-| `/full-page` | FullPage | Full page within stack |
-| `/global-full-page` | GlobalFullPage | Organization-level full page |
-| `/field-modifier` | FieldModifier | Field modifier location |
-| `/content-type-sidebar` | ContentTypeSidebar | Content type builder sidebar |
+| `/asset-sidebar`, `/stack-dashboard`, `/full-page`, `/global-full-page`, `/field-modifier`, `/content-type-sidebar` | boilerplate demos | unmodified template pages |
+
+### Contentstack access patterns
+
+Prefer `appSdk.stack` (runs as the logged-in user, no scopes) for new entry/content-type work. The `appSdk.api` proxy returns 403 in this app unless installation scopes match, and has no branch scopes at all. Branch endpoints and asset uploads go direct with the management token from App Configuration via `useBranchCmaApi`.
 
 ### Path Alias
 
