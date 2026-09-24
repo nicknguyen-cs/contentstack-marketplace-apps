@@ -185,10 +185,6 @@ const AppConfigurationExtension = () => {
       if (isValid) {
         const baseUrl = getBaseUrl();
 
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/6637642b-38c0-49ee-814d-f674bf9ffafd', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'AppConfiguration.tsx:setInstallationData', message: 'Saving installation data', data: { configurationKeys: ['stackApiKey', 'managementToken', 'deliveryToken', 'region', 'customApiUrl', 'useCustomUrl', 'baseUrl', 'apiKey', 'authorization', 'accessToken'], serverConfigKeys: ['openai_api_key', 'openai_org_id'], hasOpenaiKey: !!openaiApiKey.trim(), hasOpenaiOrg: !!openaiOrgId.trim() }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'H3,H4' }) }).catch(() => { });
-        // #endregion
-
         installationRef.current.setInstallationData({
           configuration: {
             apiKey: stackApiKey.trim(),

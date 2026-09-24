@@ -15,10 +15,11 @@
         "meta": [
           {
             "multiple": false,
-            "path": "/custom-field",
+            "path": "/custom-field-collaboration",
             "signed": false,
             "enabled": true,
-            "data_type": "json"
+            "data_type": "json",
+            "name": "Live Collaboration"
           },
           {
             "multiple": false,
@@ -27,6 +28,14 @@
             "enabled": true,
             "data_type": "text",
             "name": "Dynamic URL"
+          },
+          {
+            "multiple": true,
+            "path": "/custom-reference-field",
+            "signed": false,
+            "enabled": true,
+            "data_type": "reference",
+            "name": "Reference Picker"
           }
         ]
       },
@@ -95,6 +104,12 @@
             "signed": false,
             "enabled": true,
             "name": "Locale Status"
+          },
+          {
+            "path": "/sidebar-ai-generate",
+            "signed": false,
+            "enabled": true,
+            "name": "AI Content Generator"
           }
         ]
       },
@@ -132,16 +147,6 @@
         "meta": [
           {
             "path": "/app-configuration",
-            "signed": false,
-            "enabled": true
-          }
-        ]
-      },
-      {
-        "type": "cs.cm.stack.rte",
-        "meta": [
-          {
-            "path": "/json-rte.js",
             "signed": false,
             "enabled": true
           }
