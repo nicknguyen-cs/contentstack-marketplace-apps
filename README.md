@@ -28,6 +28,7 @@ Each app has its own README next to its code. This page is the map.
 |-----|--------------|------|
 | **Live Collaboration** | Google-Docs-style presence and field sync between editors on the same entry, over a small socket.io relay. | [`src/containers/CustomField`](src/containers/CustomField/README.md) |
 | **Dynamic URL** | Builds the entry's URL from a referenced parent, an optional taxonomy term and the title, and keeps it in sync. | [`src/containers/DynamicUrl`](src/containers/DynamicUrl/README.md) |
+| **Taxonomy URL** | Keeps the URL field in step with the selected taxonomy term: `/{term}/{title}` by default, pattern configurable per field. | [`src/containers/TaxonomyUrl`](src/containers/TaxonomyUrl/README.md) |
 | **Reference Picker** | A replacement reference field with a searchable modal table for picking entries across the allowed content types. | [`src/containers/CustomReferenceField`](src/containers/CustomReferenceField/README.md) |
 
 ### Stack dashboard widgets
@@ -74,7 +75,7 @@ You can also import `manifest.json` into Developer Hub directly with the Content
 
 | Needs | Apps |
 |-------|------|
-| Nothing beyond the logged-in user's role | Locale Status, Localize From Locale, Find & Replace, Reference Picker, Dynamic URL |
+| Nothing beyond the logged-in user's role | Locale Status, Localize From Locale, Find & Replace, Reference Picker, Dynamic URL, Taxonomy URL |
 | Stack API key + management token | Entry Draft, Branch Console, Custom Dashboard (merge widget only), AI Content Generator |
 | OpenAI API key | AI Content Generator, SEO/AEO/GEO Demo |
 | A running socket.io relay (`server/`) | Live Collaboration |
@@ -84,7 +85,7 @@ You can also import `manifest.json` into Developer Hub directly with the Content
 Three access patterns are used on purpose, and each app's README says which one it uses.
 
 - **`appSdk.stack`** (Locale Status, Localize From Locale, Find & Replace). The host window makes the Management API call as the logged-in user, so the user's own role applies and no token or app scope is needed. This is the default for anything new.
-- **Management SDK over the App SDK adapter** (Dynamic URL, Reference Picker). Same session-based auth, using `@contentstack/management` for typed calls.
+- **Management SDK over the App SDK adapter** (Dynamic URL, Taxonomy URL, Reference Picker). Same session-based auth, using `@contentstack/management` for typed calls.
 - **Direct `fetch` with the management token from App Configuration** (Entry Draft, Branch Console, AI Content Generator). Used for endpoints the App SDK proxy cannot reach, such as branch compare and merge, asset uploads, and schema reads that must honour a `branch` header.
 
 The `appSdk.api` proxy is avoided for entry and branch work. It returns 403 unless the installation carries matching OAuth scopes, and there is no scope at all for branch merge. See `src/common/hooks/useBranchCmaApi.ts` and `src/containers/FindReplace/api.ts` for the notes behind that decision.

@@ -66,6 +66,7 @@ Routes in `App.tsx` map to Contentstack UI locations. Each route lazy-loads its 
 | `/sidebar-seo-prompts` | SidebarWidgetSeoPrompts | Entry sidebar: SEO/AEO/GEO demo |
 | `/custom-field-collaboration` | CustomField | Custom field: live collaboration (needs `server/`) |
 | `/dynamic-url` | DynamicUrl | Custom field: URL composed from parent, taxonomy, title |
+| `/taxonomy-url` | TaxonomyUrl | Custom field: URL from selected taxonomy term + title, configurable pattern |
 | `/custom-reference-field` | CustomReferenceField | Custom field: reference picker |
 | `/find-replace` | FindReplace | Stack dashboard: find & replace |
 | `/custom-dashboard` | CustomDashboard | Stack dashboard: widget grid |

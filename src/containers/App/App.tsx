@@ -26,6 +26,7 @@ const ContentTypeSidebarExtension = React.lazy(() => import("../ContentTypeSideb
 const SidebarWidgetAiGenExtension = React.lazy(() => import("../SidebarWidgetAiGen/SidebarWidgetAiGen"));
 const CustomDashboardExtension = React.lazy(() => import("../CustomDashboard/CustomDashboard"));
 const DynamicUrlExtension = React.lazy(() => import("../DynamicUrl/DynamicUrl"));
+const TaxonomyUrlExtension = React.lazy(() => import("../TaxonomyUrl/TaxonomyUrl"));
 const CustomReferenceFieldExtension = React.lazy(() => import("../CustomReferenceField/CustomReferenceField"));
 const BranchConsoleExtension = React.lazy(() => import("../BranchConsole/BranchConsole"));
 const SidebarLocalizeFromExtension = React.lazy(() => import("../SidebarLocalizeFrom/SidebarLocalizeFrom"));
@@ -169,6 +170,16 @@ function App() {
               <Suspense>
                 <CustomFieldExtensionProvider>
                   <DynamicUrlExtension />
+                </CustomFieldExtensionProvider>
+              </Suspense>
+            }
+          />
+          <Route
+            path="/taxonomy-url"
+            element={
+              <Suspense>
+                <CustomFieldExtensionProvider>
+                  <TaxonomyUrlExtension />
                 </CustomFieldExtensionProvider>
               </Suspense>
             }
