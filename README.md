@@ -28,7 +28,7 @@ Each app has its own README next to its code. This page is the map.
 |-----|--------------|------|
 | **Live Collaboration** | Google-Docs-style presence and field sync between editors on the same entry, over a small socket.io relay. | [`src/containers/CustomField`](src/containers/CustomField/README.md) |
 | **Dynamic URL** | Builds the entry's URL from a referenced parent, an optional taxonomy term and the title, and keeps it in sync. | [`src/containers/DynamicUrl`](src/containers/DynamicUrl/README.md) |
-| **Taxonomy URL** | Keeps the URL field in step with the selected taxonomy term: `/{term}/{title}` by default, pattern configurable per field. | [`src/containers/TaxonomyUrl`](src/containers/TaxonomyUrl/README.md) |
+| **Taxonomy URL** | Writes the native URL field from taxonomy terms and text fields, with per-term rules so one content type can carry several URL schemes (`/blog/{field:slug}`, `/patchnotes/{term:franchise}/{term:season}/{field:slug}`). | [`src/containers/TaxonomyUrl`](src/containers/TaxonomyUrl/README.md) |
 | **Reference Picker** | A replacement reference field with a searchable modal table for picking entries across the allowed content types. | [`src/containers/CustomReferenceField`](src/containers/CustomReferenceField/README.md) |
 
 ### Stack dashboard widgets

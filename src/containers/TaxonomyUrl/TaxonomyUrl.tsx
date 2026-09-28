@@ -5,7 +5,16 @@ import { useAppSdk } from "../../common/hooks/useAppSdk";
 import { useCurrentBranch } from "../../common/hooks/useCurrentBranch";
 import { TermSource, friendlyApiError, resolveTerm } from "./api";
 import { ResolvedTerm, TaxonomyUrlConfig, UrlBreakdown } from "./types";
-import { TOKENS, composeUrl, readConfig, selectTerm, tokenValues, tokensIn, unknownTokens } from "./url";
+import {
+  TOKENS,
+  composeUrl,
+  invalidTokens,
+  readConfig,
+  selectPattern,
+  termNeeds,
+  termRefs,
+  tokenValues,
+} from "./url";
 
 type EntryData = Record<string, unknown>;
 
@@ -23,9 +32,10 @@ interface CustomFieldHandle {
 
 const EMPTY: UrlBreakdown = {
   locale: "",
-  term: null,
+  ruleLabel: null,
+  pattern: "",
+  terms: {},
   termCount: 0,
-  title: "",
   currentUrl: "",
   composedUrl: "",
   missing: [],
@@ -33,8 +43,9 @@ const EMPTY: UrlBreakdown = {
 
 /**
  * "Taxonomy URL" — a custom field that keeps the entry's URL field in step
- * with the taxonomy term the editor picks: /{term}/{title} by default, with
- * the pattern configurable per field instance.
+ * with the taxonomy terms the editor picks. One pattern by default
+ * (/{term}/{title}), or an ordered list of rules keyed on a term so one
+ * content type can carry several URL schemes.
  *
  * Term names are read through the Management SDK over the App SDK adapter,
  * which runs as the logged-in user. Results are cached per term and locale,
@@ -46,7 +57,10 @@ const TaxonomyUrl: React.FC = () => {
 
   const customField = (appSdk?.location?.CustomField as unknown as CustomFieldHandle | null) ?? null;
   const config: TaxonomyUrlConfig = useMemo(() => readConfig(customField?.fieldConfig), [customField]);
-  const badTokens = useMemo(() => unknownTokens(config.pattern), [config.pattern]);
+  const badTokens = useMemo(() => {
+    const all = [config.pattern, ...config.rules.map((rule) => rule.pattern)].flatMap(invalidTokens);
+    return [...new Set(all)];
+  }, [config]);
 
   const termSource: TermSource | null = useMemo(() => {
     if (!appSdk) return null;
@@ -97,34 +111,48 @@ const TaxonomyUrl: React.FC = () => {
       const seq = ++runSeq.current;
 
       const locale = customField.entry.locale || (typeof data.locale === "string" ? data.locale : "");
-      const title = typeof data[config.titleFieldUid] === "string" ? (data[config.titleFieldUid] as string) : "";
       const currentUrl = typeof data[config.urlFieldUid] === "string" ? (data[config.urlFieldUid] as string) : "";
-      const { term: ref, count } = selectTerm(data[config.taxonomyFieldUid], config.taxonomyUid);
-      const tokens = tokensIn(config.pattern);
+      const refs = termRefs(data[config.taxonomyFieldUid]);
+      const { pattern, label } = selectPattern(config, refs);
 
-      let term: ResolvedTerm | null = null;
-      if (ref) {
-        const withTaxonomyName = tokens.includes("taxonomy");
-        const withPath = tokens.includes("term_path");
-        const key = [ref.taxonomy_uid, ref.term_uid, locale, withTaxonomyName, withPath].join("|");
-        let pending = termCache.current.get(key);
-        if (!pending) {
-          pending = resolveTerm(termSource, ref, { locale, withTaxonomyName, withPath });
-          termCache.current.set(key, pending);
-          pending.catch(() => termCache.current.delete(key));
-        }
-        try {
-          term = await pending;
-          if (seq === runSeq.current) setError("");
-        } catch (e) {
-          if (seq === runSeq.current) setError(friendlyApiError(e));
-        }
+      if (!pattern) {
+        setBreakdown({ ...EMPTY, locale, termCount: refs.length, currentUrl });
+        return;
       }
-      if (seq !== runSeq.current) return;
 
-      const { url, missing } = composeUrl(config.pattern, tokenValues(term, title, locale));
+      // Resolve every term the pattern needs, sharing one cached promise per
+      // term/locale/detail-level so repeated change events cost nothing.
+      const needs = termNeeds(pattern, refs, config.taxonomyUid);
+      const terms: Record<string, ResolvedTerm | null> = {};
+      const failures: string[] = [];
+      await Promise.all(
+        needs.map(async (need) => {
+          terms[need.key] = null;
+          if (!need.ref) return;
+          const key = [need.ref.taxonomy_uid, need.ref.term_uid, locale, need.withTaxonomyName, need.withPath].join("|");
+          let pending = termCache.current.get(key);
+          if (!pending) {
+            pending = resolveTerm(termSource, need.ref, {
+              locale,
+              withTaxonomyName: need.withTaxonomyName,
+              withPath: need.withPath,
+            });
+            termCache.current.set(key, pending);
+            pending.catch(() => termCache.current.delete(key));
+          }
+          try {
+            terms[need.key] = await pending;
+          } catch (e) {
+            failures.push(friendlyApiError(e));
+          }
+        })
+      );
+      if (seq !== runSeq.current) return;
+      setError(failures.join(" "));
+
+      const { url, missing } = composeUrl(pattern, tokenValues(pattern, terms, data, config, locale));
       const composedUrl = missing.length ? "" : url;
-      setBreakdown({ locale, term, termCount: count, title, currentUrl, composedUrl, missing });
+      setBreakdown({ locale, ruleLabel: label, pattern, terms, termCount: refs.length, currentUrl, composedUrl, missing });
 
       if (autoSyncRef.current && composedUrl) void writeUrl(composedUrl, currentUrl);
     },
@@ -152,12 +180,15 @@ const TaxonomyUrl: React.FC = () => {
     return <div className={styles.shell}>This app only runs as a custom field.</div>;
   }
 
-  const term = breakdown.term;
+  const termEntries = Object.entries(breakdown.terms);
 
   return (
     <div className={styles.shell}>
       <div className={styles.header}>
-        <span className={styles.mono}>{config.pattern}</span>
+        <span className={styles.mono}>
+          {breakdown.pattern || <span className={styles.muted}>no pattern applies</span>}
+          {breakdown.ruleLabel && <span className={styles.muted}> · {breakdown.ruleLabel}</span>}
+        </span>
         <label className={styles.toggle}>
           <input
             type="checkbox"
@@ -175,36 +206,44 @@ const TaxonomyUrl: React.FC = () => {
 
       {badTokens.length > 0 && (
         <div className={`${styles.banner} ${styles.bannerError}`}>
-          Unknown token{badTokens.length > 1 ? "s" : ""} in pattern: {badTokens.map((t) => `{${t}}`).join(", ")}.
-          Known tokens: {Object.keys(TOKENS).map((t) => `{${t}}`).join(", ")}.
+          Invalid token{badTokens.length > 1 ? "s" : ""} in config: {badTokens.join(", ")}. Known tokens:{" "}
+          {Object.keys(TOKENS)
+            .map((t) => `{${t}}`)
+            .join(", ")}
+          ; term tokens take a taxonomy qualifier like {"{term:franchise}"}.
         </div>
       )}
 
       <dl className={styles.grid}>
-        <dt>Term</dt>
-        <dd>
-          {term ? (
-            <>
-              <span>{term.termName}</span>
-              <span className={styles.muted}> · {term.taxonomyName || term.taxonomyUid}</span>
-              {term.path.length > 1 && <div className={styles.muted}>{term.path.join(" › ")}</div>}
-            </>
-          ) : (
-            <span className={styles.muted}>
-              {breakdown.termCount === 0
-                ? `none selected in "${config.taxonomyFieldUid}"`
-                : `no term from taxonomy "${config.taxonomyUid}"`}
-            </span>
-          )}
-          {breakdown.termCount > 1 && term && (
-            <div className={styles.muted}>
-              {breakdown.termCount} terms tagged; using {config.taxonomyUid ? `taxonomy "${config.taxonomyUid}"` : "the first"}.
-            </div>
-          )}
-        </dd>
-
-        <dt>Title</dt>
-        <dd>{breakdown.title || <span className={styles.muted}>empty</span>}</dd>
+        {termEntries.length === 0 ? (
+          <>
+            <dt>Terms</dt>
+            <dd>
+              <span className={styles.muted}>
+                {breakdown.termCount === 0
+                  ? `none selected in "${config.taxonomyFieldUid}"`
+                  : `${breakdown.termCount} tagged, none used by this pattern`}
+              </span>
+            </dd>
+          </>
+        ) : (
+          termEntries.map(([key, term]) => (
+            <React.Fragment key={key || "__primary"}>
+              <dt>{key || (config.taxonomyUid ? config.taxonomyUid : "term")}</dt>
+              <dd>
+                {term ? (
+                  <>
+                    <span>{term.termName}</span>
+                    {!key && <span className={styles.muted}> · {term.taxonomyName || term.taxonomyUid}</span>}
+                    {term.path.length > 1 && <div className={styles.muted}>{term.path.join(" › ")}</div>}
+                  </>
+                ) : (
+                  <span className={styles.muted}>no term from this taxonomy</span>
+                )}
+              </dd>
+            </React.Fragment>
+          ))
+        )}
 
         <dt>Current URL</dt>
         <dd className={styles.mono}>{breakdown.currentUrl || <span className={styles.muted}>empty</span>}</dd>
@@ -216,8 +255,12 @@ const TaxonomyUrl: React.FC = () => {
       </dl>
 
       {breakdown.missing.length > 0 && (
+        <p className={styles.hint}>Waiting for {breakdown.missing.join(", ")} before building the URL.</p>
+      )}
+
+      {!breakdown.pattern && config.rules.length > 0 && (
         <p className={styles.hint}>
-          Waiting for {breakdown.missing.map((t) => `{${t}}`).join(", ")} before building the URL.
+          No rule matched the entry's terms and no fallback pattern is set, so the URL is left alone.
         </p>
       )}
 
@@ -233,7 +276,9 @@ const TaxonomyUrl: React.FC = () => {
       )}
 
       {autoSync && breakdown.composedUrl && breakdown.composedUrl === breakdown.currentUrl && (
-        <p className={styles.hint}>URL is up to date{lastWrite === breakdown.currentUrl ? " (written by this field)" : ""}.</p>
+        <p className={styles.hint}>
+          URL is up to date{lastWrite === breakdown.currentUrl ? " (written by this field)" : ""}.
+        </p>
       )}
 
       {error && <div className={`${styles.banner} ${styles.bannerError}`}>{error}</div>}

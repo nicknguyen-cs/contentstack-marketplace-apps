@@ -1,10 +1,25 @@
+/** One conditional pattern. The first rule whose term is tagged on the entry wins. */
+export interface UrlRule {
+  when: {
+    /** Taxonomy UID to look in. */
+    taxonomy: string;
+    /** Term UID (or several) that selects this rule. */
+    term: string | string[];
+  };
+  pattern: string;
+  /** Optional label shown in the field when the rule matches; defaults to the term UID. */
+  label?: string;
+}
+
 /** Per-instance settings, read from the custom field's "config" JSON in the content type builder. */
 export interface TaxonomyUrlConfig {
-  /** URL template. Tokens in braces are replaced with slugs, e.g. "/{term}/{title}". */
+  /** Fallback URL template used when no rule matches (or there are no rules). Empty = don't write. */
   pattern: string;
-  /** UID of the taxonomy field on the content type whose selected term drives the URL. */
+  /** Conditional patterns, evaluated in order. */
+  rules: UrlRule[];
+  /** UID of the taxonomy field on the content type that holds the entry's terms. */
   taxonomyFieldUid: string;
-  /** When the entry is tagged with terms from several taxonomies, only use this one. Empty = first term found. */
+  /** Which taxonomy the unqualified {term} token reads from. Empty = first term found. */
   taxonomyUid: string;
   /** Field the {title} token is built from. */
   titleFieldUid: string;
@@ -28,23 +43,27 @@ export interface CmaTerm {
   depth?: number;
 }
 
-/** What the resolver learns about the selected term. Names are in the entry's locale when the CMA has them. */
+/** What the resolver learns about a term. Names are in the entry's locale when the CMA has them. */
 export interface ResolvedTerm {
   taxonomyUid: string;
   taxonomyName: string;
   termUid: string;
   termName: string;
-  /** Term names from the root of the taxonomy down to (and including) the selected term. */
+  /** Term names from the root of the taxonomy down to (and including) the term. */
   path: string[];
 }
 
 /** Everything the field shows in its breakdown table. */
 export interface UrlBreakdown {
   locale: string;
-  term: ResolvedTerm | null;
-  /** How many terms the entry is tagged with (across the taxonomy field), to explain which one was used. */
+  /** Which rule chose the pattern, or "default", or null when nothing applies. */
+  ruleLabel: string | null;
+  /** The pattern in use. */
+  pattern: string;
+  /** Terms the pattern needed, keyed by taxonomy UID. Null when the entry has no term from that taxonomy. */
+  terms: Record<string, ResolvedTerm | null>;
+  /** How many terms the entry is tagged with in total. */
   termCount: number;
-  title: string;
   currentUrl: string;
   composedUrl: string;
   /** Tokens in the pattern that resolved to nothing, so the URL cannot be built yet. */
