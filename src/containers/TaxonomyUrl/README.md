@@ -22,14 +22,14 @@ Contentstack's URL patterns are a single static template per content type. They 
 
 ## Using it
 
-Add the field to a content type that has a **URL** field and a **taxonomy** field. Remove any URL pattern from the content type, so Contentstack doesn't regenerate the URL on save and fight the field. The custom field's own value is unused; it is just where the code mounts.
+Add the field to a content type that has a **URL** field and a **taxonomy** field. Remove any URL pattern from the content type, so Contentstack doesn't regenerate the URL on save and fight the field. The custom field's own value stores only the per-entry sync choice (`auto` or `manual`).
 
 The field shows the pattern in use (and which rule chose it), each term the pattern needs, the URL field's current value and the composed URL.
 
 When no rule matches, the field lists every term the entry is tagged with as `taxonomy_uid › term_uid`. Copy those UIDs into the rule's `when`; they are UIDs, not display names, and must match exactly.
 
 - **Keep URL in sync** (on by default) rewrites the URL field whenever a term or a source field changes. While it is on, manual edits to the URL field are overwritten on the next change.
-- Untick it to stop the automatic writes. An **Apply** button appears when the composed URL differs from the current one.
+- Untick it to stop the automatic writes. An **Apply** button appears when the composed URL differs from the current one. The choice is written to the custom field's value, so it is saved with the entry and survives a reload.
 - The URL is only written when every token in the pattern has a value. Until then the field shows a **URL not generated yet** warning listing each missing tag or field in plain words, and leaves the URL alone.
 
 ## Configuration
@@ -88,7 +88,7 @@ A blog entry tagged `blog` gets `/blog/my-title`. A patch notes entry tagged `pa
 | `taxonomyUid` | Which taxonomy the unqualified `{term}` reads from. Empty means the first term tagged. |
 | `titleFieldUid` | Field the `{title}` token is built from. |
 | `urlFieldUid` | The field to write to. |
-| `autoSync` | Initial state of the **Keep URL in sync** toggle. |
+| `autoSync` | Default for the **Keep URL in sync** toggle on entries that haven't chosen yet. |
 
 ### Tokens
 

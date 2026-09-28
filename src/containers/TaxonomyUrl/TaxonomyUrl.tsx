@@ -26,6 +26,8 @@ type EntryData = Record<string, unknown>;
 /** The parts of the App SDK's CustomField location this app touches. */
 interface CustomFieldHandle {
   fieldConfig?: unknown;
+  /** The custom field's own value. Holds the per-entry sync choice ("auto" | "manual"), saved with the entry. */
+  field: { getData(): unknown; setData(data: unknown): Promise<unknown> };
   frame: {
     enableAutoResizing(): unknown;
     disableAutoResizing(): unknown;
@@ -37,6 +39,19 @@ interface CustomFieldHandle {
     onChange(callback: (data: EntryData) => void): void;
     getField(uid: string): { setData(data: unknown): Promise<unknown> };
   };
+}
+
+type SyncChoice = "auto" | "manual";
+
+/** The saved per-entry sync choice, if any. Anything else means "use the config default". */
+function storedSyncChoice(customField: CustomFieldHandle | null): SyncChoice | null {
+  let value: unknown;
+  try {
+    value = customField?.field.getData();
+  } catch {
+    return null;
+  }
+  return value === "auto" || value === "manual" ? value : null;
 }
 
 const EMPTY: UrlBreakdown = {
@@ -80,10 +95,20 @@ const TaxonomyUrl: React.FC = () => {
     return stack as unknown as TermSource;
   }, [appSdk, branchUid]);
 
+  // The toggle is stored in the custom field's own value so it survives a
+  // reload and is saved with the entry; the config only supplies the default.
   const [autoSync, setAutoSync] = useState(config.autoSync);
   const autoSyncRef = useRef(autoSync);
   autoSyncRef.current = autoSync;
-  useEffect(() => setAutoSync(config.autoSync), [config.autoSync]);
+  useEffect(() => {
+    const stored = storedSyncChoice(customField);
+    setAutoSync(stored ? stored === "auto" : config.autoSync);
+  }, [customField, config.autoSync]);
+
+  const chooseSync = (enabled: boolean) => {
+    setAutoSync(enabled);
+    void customField?.field.setData(enabled ? "auto" : "manual").catch(() => undefined);
+  };
 
   const [breakdown, setBreakdown] = useState<UrlBreakdown>(EMPTY);
   const [error, setError] = useState("");
@@ -252,7 +277,7 @@ const TaxonomyUrl: React.FC = () => {
             type="checkbox"
             checked={autoSync}
             onChange={(event) => {
-              setAutoSync(event.target.checked);
+              chooseSync(event.target.checked);
               if (event.target.checked && breakdown.composedUrl) {
                 void writeUrl(breakdown.composedUrl, breakdown.currentUrl);
               }
