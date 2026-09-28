@@ -55,26 +55,29 @@ These are the defaults; an empty config gives exactly this.
 
 Add `rules`. They are evaluated in order and the first one whose term is tagged on the entry wins. `pattern` becomes the fallback; leave it out to write nothing when no rule matches.
 
+This example is for one hierarchical taxonomy, `activision`, with an `article_type` term whose children are `blog`, `guides` and `patch_notes`, plus `franchise` and `season` groups alongside it:
+
 ```json
 {
   "rules": [
     {
-      "when": { "taxonomy": "article_type", "term": "blog" },
-      "pattern": "/{term:article_type}/{field:slug}"
+      "when": { "taxonomy": "activision", "term": "blog" },
+      "pattern": "/{term:article_type}/{title}"
     },
     {
-      "when": { "taxonomy": "article_type", "term": ["patchnotes", "patch_notes"] },
-      "pattern": "/patchnotes/{term:franchise}/{term:season}/{field:slug}",
+      "when": { "taxonomy": "activision", "term": "patch_notes" },
+      "pattern": "/patch-notes/{term:franchise}/{term:season}/{title}",
       "label": "Patch notes"
     },
     {
-      "when": { "taxonomy": "article_type", "term": "guides" },
-      "pattern": "/guides/{term_path:guide_category}/{field:slug}"
+      "when": { "taxonomy": "activision", "term": "guides" },
+      "pattern": "/guides/{term_path:guide_category}/{title}"
     }
-  ],
-  "pattern": "/{term:article_type}/{field:slug}"
+  ]
 }
 ```
+
+`when.taxonomy` and `when.term` are UIDs, not display names. When no rule matches, the field lists the entry's tagged terms as `taxonomy_uid › term_uid` so you can copy them.
 
 | Key | Meaning |
 |-----|---------|
@@ -93,8 +96,8 @@ Add `rules`. They are evaluated in order and the first one whose term is tagged 
 
 | Token | Expands to |
 |-------|------------|
-| `{term}` / `{term:franchise}` | The term's name, from the primary taxonomy or the named one |
-| `{term_path}` / `{term_path:x}` | Every ancestor of the term, then the term: `guides/getting-started` |
+| `{term}` / `{term:x}` | The term's name |
+| `{term_path}` / `{term_path:x}` | The term's ancestors then the term: `basics/getting-started` |
 | `{term_uid}` / `{term_uid:x}` | The term's UID |
 | `{taxonomy}` / `{taxonomy:x}` | The taxonomy's name |
 | `{taxonomy_uid}` / `{taxonomy_uid:x}` | The taxonomy's UID |
@@ -102,12 +105,18 @@ Add `rules`. They are evaluated in order and the first one whose term is tagged 
 | `{field:slug}` | Any root-level text field, by UID |
 | `{locale}` | The entry's locale code |
 
+**Qualifiers.** A term token without a qualifier reads the primary term (the `taxonomyUid` config, else the first term tagged). With a qualifier `x`, the field looks for a tagged term in two ways:
+
+1. If `x` is a **taxonomy UID**, the entry's first term from that taxonomy. Use this when each concept is its own taxonomy.
+2. Otherwise `x` is treated as a **parent term UID**, and the token reads the tagged term that sits anywhere under it. Use this when one taxonomy holds groups like `article_type`, `franchise` and `season` as top-level terms. `{term_path:x}` then gives only the segments below `x`.
+
 Anything outside braces is kept literally. Every value is slugified: lower-cased, diacritics stripped, anything that is not a letter or digit becomes a hyphen. The result is normalised to a single leading slash, no trailing slash and no empty segments. Invalid tokens are reported in the field rather than written into the URL.
 
 ## How it works
 
 - Term and taxonomy names are read through the Management SDK over the App SDK adapter, so the logged-in user's session is used and no token or app scope is needed. The App SDK's own `appSdk.stack` has no taxonomy API, which is why this app differs from the sidebar widgets.
 - Only the terms the chosen pattern mentions are fetched, and only the detail it needs: the taxonomy name for `{taxonomy}`, the ancestor chain for `{term_path}`.
+- A parent-term qualifier needs every tagged term's ancestor chain to find the match. Those are fetched once per term and cached with everything else.
 - Names are requested in the entry's locale first (for stacks with localized taxonomies) and unlocalized second; if both fail the UID is slugified.
 - `{term_path}` uses the term's `ancestors` call, orders the chain by walking `parent_uid`, then re-reads each ancestor in-locale for its name.
 - Results are cached per term, locale and detail level for the life of the field, so typing in a text field never triggers a request.
@@ -115,7 +124,7 @@ Anything outside braces is kept literally. Every value is slugified: lower-cased
 
 ## Limitations
 
-- One term per taxonomy. If an entry carries two terms from the same taxonomy, the first one stored wins.
+- One term per slot. If two tagged terms both fit a qualifier (two terms from the same taxonomy, or two under the same parent), the first one stored wins.
 - `{field:x}` reads root-level string fields only. Group and modular-block fields aren't reachable.
 - The URL is rebuilt inside the editor only. Renaming a term does not update entries that are already saved; see the Automate scripts in [Dynamic URL](../DynamicUrl/README.md) for the bulk-update pattern.
 - If the URL field is non-editable or missing from the content type, the write fails and the field shows the error.

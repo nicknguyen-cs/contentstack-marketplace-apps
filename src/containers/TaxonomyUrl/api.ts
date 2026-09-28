@@ -92,9 +92,9 @@ export async function resolveTerm(
   }
   const termName = term.name || term.uid;
 
-  const [taxonomyName, ancestorNames] = await Promise.all([
+  const [taxonomyName, ancestors] = await Promise.all([
     options.withTaxonomyName ? fetchTaxonomyName(source, ref.taxonomy_uid, options.locale) : "",
-    options.withPath ? fetchAncestorNames(source, ref, term, options.locale) : [],
+    options.withPath ? fetchAncestors(source, ref, term, options.locale) : [],
   ]);
 
   return {
@@ -102,7 +102,9 @@ export async function resolveTerm(
     taxonomyName,
     termUid: term.uid,
     termName,
-    path: [...ancestorNames, termName],
+    parentUid: term.parent_uid ?? null,
+    path: [...ancestors.map((item) => item.name), termName],
+    pathUids: [...ancestors.map((item) => item.uid), term.uid],
   };
 }
 
@@ -131,12 +133,12 @@ async function fetchTaxonomyName(source: TermSource, taxonomyUid: string, locale
   }
 }
 
-async function fetchAncestorNames(
+async function fetchAncestors(
   source: TermSource,
   ref: TermRef,
   term: CmaTerm,
   locale: string
-): Promise<string[]> {
+): Promise<{ uid: string; name: string }[]> {
   if (!term.parent_uid) return [];
   let ancestors: CmaTerm[] = [];
   try {
@@ -151,14 +153,14 @@ async function fetchAncestorNames(
 
   // The ancestors call has no locale parameter, so re-read each ancestor
   // in-locale for its localized name. Chains are short, so this is a few calls.
-  if (!locale) return ordered.map((item) => item.name || item.uid);
+  if (!locale) return ordered.map((item) => ({ uid: item.uid, name: item.name || item.uid }));
   return Promise.all(
     ordered.map(async (item) => {
       try {
         const localized = await fetchTerm(source, { taxonomy_uid: ref.taxonomy_uid, term_uid: item.uid }, locale);
-        return localized?.name || item.name || item.uid;
+        return { uid: item.uid, name: localized?.name || item.name || item.uid };
       } catch {
-        return item.name || item.uid;
+        return { uid: item.uid, name: item.name || item.uid };
       }
     })
   );

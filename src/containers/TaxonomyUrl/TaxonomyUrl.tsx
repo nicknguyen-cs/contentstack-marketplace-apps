@@ -4,15 +4,18 @@ import styles from "./TaxonomyUrl.module.css";
 import { useAppSdk } from "../../common/hooks/useAppSdk";
 import { useCurrentBranch } from "../../common/hooks/useCurrentBranch";
 import { TermSource, friendlyApiError, resolveTerm } from "./api";
-import { ResolvedTerm, TaxonomyUrlConfig, UrlBreakdown } from "./types";
+import { ResolvedTerm, TaxonomyUrlConfig, TermRef, UrlBreakdown } from "./types";
 import {
   TOKENS,
   composeUrl,
   invalidTokens,
+  primaryTerm,
   readConfig,
+  refForTaxonomy,
   selectPattern,
   termNeeds,
   termRefs,
+  termUnder,
   tokenValues,
 } from "./url";
 
@@ -122,28 +125,50 @@ const TaxonomyUrl: React.FC = () => {
 
       // Resolve every term the pattern needs, sharing one cached promise per
       // term/locale/detail-level so repeated change events cost nothing.
-      const needs = termNeeds(pattern, refs, config.taxonomyUid);
-      const terms: Record<string, ResolvedTerm | null> = {};
       const failures: string[] = [];
+      const resolveCached = (ref: TermRef, withTaxonomyName: boolean, withPath: boolean) => {
+        const key = [ref.taxonomy_uid, ref.term_uid, locale, withTaxonomyName, withPath].join("|");
+        let pending = termCache.current.get(key);
+        if (!pending) {
+          pending = resolveTerm(termSource, ref, { locale, withTaxonomyName, withPath });
+          termCache.current.set(key, pending);
+          pending.catch(() => termCache.current.delete(key));
+        }
+        return pending.catch((e) => {
+          failures.push(friendlyApiError(e));
+          return null;
+        });
+      };
+
+      const needs = termNeeds(pattern);
+      const terms: Record<string, ResolvedTerm | null> = {};
+      // Terms fetched with their ancestor chains, only when a qualifier names
+      // a parent term rather than a taxonomy. Shared across such qualifiers.
+      let withChains: Promise<ResolvedTerm[]> | null = null;
+      const taggedWithChains = () => {
+        withChains ??= Promise.all(refs.map((ref) => resolveCached(ref, false, true))).then((list) =>
+          list.filter((term): term is ResolvedTerm => term !== null)
+        );
+        return withChains;
+      };
+
       await Promise.all(
         needs.map(async (need) => {
           terms[need.key] = null;
-          if (!need.ref) return;
-          const key = [need.ref.taxonomy_uid, need.ref.term_uid, locale, need.withTaxonomyName, need.withPath].join("|");
-          let pending = termCache.current.get(key);
-          if (!pending) {
-            pending = resolveTerm(termSource, need.ref, {
-              locale,
-              withTaxonomyName: need.withTaxonomyName,
-              withPath: need.withPath,
-            });
-            termCache.current.set(key, pending);
-            pending.catch(() => termCache.current.delete(key));
+          const ref = need.key ? refForTaxonomy(refs, need.key) : primaryTerm(refs, config.taxonomyUid);
+          if (ref) {
+            terms[need.key] = await resolveCached(ref, need.withTaxonomyName, need.withPath);
+            return;
           }
-          try {
-            terms[need.key] = await pending;
-          } catch (e) {
-            failures.push(friendlyApiError(e));
+          if (!need.key) return;
+          // Not a taxonomy UID: treat the qualifier as a parent term UID.
+          const under = termUnder(await taggedWithChains(), need.key);
+          if (!under) return;
+          if (need.withTaxonomyName) {
+            const named = await resolveCached({ taxonomy_uid: under.taxonomyUid, term_uid: under.termUid }, true, true);
+            terms[need.key] = named ? { ...under, taxonomyName: named.taxonomyName } : under;
+          } else {
+            terms[need.key] = under;
           }
         })
       );

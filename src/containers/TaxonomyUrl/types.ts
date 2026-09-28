@@ -49,8 +49,11 @@ export interface ResolvedTerm {
   taxonomyName: string;
   termUid: string;
   termName: string;
-  /** Term names from the root of the taxonomy down to (and including) the term. */
+  parentUid: string | null;
+  /** Term names from the root of the taxonomy down to (and including) the term. Only the term itself unless the chain was fetched. */
   path: string[];
+  /** Term UIDs parallel to `path`. */
+  pathUids: string[];
 }
 
 /** Everything the field shows in its breakdown table. */

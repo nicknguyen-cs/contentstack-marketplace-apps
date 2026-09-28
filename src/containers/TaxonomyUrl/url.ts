@@ -150,26 +150,44 @@ export function selectPattern(
 }
 
 export interface TermNeed {
-  /** Taxonomy UID the pattern refers to ("" for the primary term). */
+  /** The token qualifier: "" for the primary term, else a taxonomy UID or a parent term UID. */
   key: string;
-  ref: TermRef | null;
   withTaxonomyName: boolean;
   withPath: boolean;
 }
 
-/** Which terms the pattern needs, and how much of each to fetch. */
-export function termNeeds(pattern: string, refs: TermRef[], primaryTaxonomyUid: string): TermNeed[] {
+/** Which term slots the pattern needs, and how much of each to fetch. */
+export function termNeeds(pattern: string): TermNeed[] {
   const needs = new Map<string, TermNeed>();
   for (const token of tokensIn(pattern)) {
     if (!TERM_KINDS.includes(token.kind as TokenKind)) continue;
-    const key = token.qualifier;
-    const ref = key ? refs.find((r) => r.taxonomy_uid === key) ?? null : primaryTerm(refs, primaryTaxonomyUid);
-    const need = needs.get(key) ?? { key, ref, withTaxonomyName: false, withPath: false };
+    const need = needs.get(token.qualifier) ?? { key: token.qualifier, withTaxonomyName: false, withPath: false };
     if (token.kind === "taxonomy") need.withTaxonomyName = true;
     if (token.kind === "term_path") need.withPath = true;
-    needs.set(key, need);
+    needs.set(token.qualifier, need);
   }
   return [...needs.values()];
+}
+
+/** The tagged term a qualifier refers to when it names a taxonomy UID (first term of that taxonomy), else null. */
+export function refForTaxonomy(refs: TermRef[], taxonomyUid: string): TermRef | null {
+  return refs.find((ref) => ref.taxonomy_uid === taxonomyUid) ?? null;
+}
+
+/**
+ * The tagged term a qualifier refers to when it names a parent term: the
+ * first resolved term whose ancestor chain contains that UID. The path is
+ * cut to the segments below that ancestor, so {term_path:franchise} on
+ * activision › franchise › halo › infinite gives halo/infinite.
+ */
+export function termUnder(resolved: ResolvedTerm[], ancestorUid: string): ResolvedTerm | null {
+  for (const term of resolved) {
+    const index = term.pathUids.indexOf(ancestorUid);
+    if (index >= 0 && index < term.pathUids.length - 1) {
+      return { ...term, path: term.path.slice(index + 1), pathUids: term.pathUids.slice(index + 1) };
+    }
+  }
+  return null;
 }
 
 /** Slug values for every token in the pattern, keyed by the raw token text. Empty string means "not available". */
