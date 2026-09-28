@@ -26,7 +26,11 @@ type EntryData = Record<string, unknown>;
 /** The parts of the App SDK's CustomField location this app touches. */
 interface CustomFieldHandle {
   fieldConfig?: unknown;
-  frame: { enableAutoResizing(): void };
+  frame: {
+    enableAutoResizing(): unknown;
+    disableAutoResizing(): unknown;
+    updateHeight(height?: number): Promise<void>;
+  };
   entry: {
     locale?: string;
     getData(): EntryData;
@@ -200,9 +204,31 @@ const TaxonomyUrl: React.FC = () => {
   useEffect(() => {
     if (!customField || subscribedRef.current) return;
     subscribedRef.current = true;
-    customField.frame.enableAutoResizing();
     void recomputeRef.current(customField.entry.getData());
     customField.entry.onChange((data) => void recomputeRef.current(data));
+  }, [customField]);
+
+  // Size the iframe from the content box, not the document. The SDK's own
+  // auto-resize measures the document, which never shrinks below the frame's
+  // current height, and MarketplaceAppProvider pushes a fixed 450px right
+  // after init. Re-pushing shortly after mount wins over that.
+  const shellRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!customField || !shell) return;
+    customField.frame.disableAutoResizing();
+    const push = () => {
+      const height = Math.ceil(shell.getBoundingClientRect().height);
+      if (height > 0) void customField.frame.updateHeight(height).catch(() => undefined);
+    };
+    const observer = new ResizeObserver(push);
+    observer.observe(shell);
+    push();
+    const timers = [300, 1200].map((ms) => window.setTimeout(push, ms));
+    return () => {
+      observer.disconnect();
+      timers.forEach((id) => window.clearTimeout(id));
+    };
   }, [customField]);
 
   if (!appSdk) {
@@ -215,7 +241,7 @@ const TaxonomyUrl: React.FC = () => {
   const termEntries = Object.entries(breakdown.terms);
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} ref={shellRef}>
       <div className={styles.header}>
         <span className={styles.mono}>
           {breakdown.pattern || <span className={styles.muted}>no pattern applies</span>}
@@ -304,11 +330,11 @@ const TaxonomyUrl: React.FC = () => {
       )}
 
       {!breakdown.pattern && config.rules.length > 0 && (
-        <p className={`${styles.banner} ${styles.bannerWarn}`}>
+        <div className={`${styles.banner} ${styles.bannerWarn}`}>
           No rule matched the entry&apos;s terms and no fallback pattern is set, so the URL is left alone. Each
           rule&apos;s <span className={styles.mono}>when</span> must name a taxonomy UID and term UID exactly as
           listed above.
-        </p>
+        </div>
       )}
 
       {!autoSync && (
@@ -323,9 +349,9 @@ const TaxonomyUrl: React.FC = () => {
       )}
 
       {autoSync && breakdown.composedUrl && breakdown.composedUrl === breakdown.currentUrl && (
-        <p className={styles.hint}>
+        <div className={styles.hint}>
           URL is up to date{lastWrite === breakdown.currentUrl ? " (written by this field)" : ""}.
-        </p>
+        </div>
       )}
 
       {error && <div className={`${styles.banner} ${styles.bannerError}`}>{error}</div>}
