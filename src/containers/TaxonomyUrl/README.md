@@ -30,7 +30,7 @@ When no rule matches, the field lists every term the entry is tagged with as `ta
 
 - **Keep URL in sync** (on by default) rewrites the URL field whenever a term or a source field changes. While it is on, manual edits to the URL field are overwritten on the next change.
 - Untick it to stop the automatic writes. An **Apply** button appears when the composed URL differs from the current one.
-- The URL is only written when every token in the pattern has a value. Until then the field says what it is waiting for and leaves the URL alone.
+- The URL is only written when every token in the pattern has a value. Until then the field shows a **URL not generated yet** warning listing each missing tag or field in plain words, and leaves the URL alone.
 
 ## Configuration
 
@@ -55,27 +55,25 @@ These are the defaults; an empty config gives exactly this.
 
 Add `rules`. They are evaluated in order and the first one whose term is tagged on the entry wins. `pattern` becomes the fallback; leave it out to write nothing when no rule matches.
 
-This example is for one hierarchical taxonomy, `activision`, with an `article_type` term whose children are `blog`, `guides` and `patch_notes`, plus `franchise` and `season` groups alongside it:
+This example is for one taxonomy, `article_type`, whose top-level terms are `blog`, `patch_notes` and `season` (with the individual seasons as children of `season`):
 
 ```json
 {
   "rules": [
     {
-      "when": { "taxonomy": "activision", "term": "blog" },
-      "pattern": "/{term:article_type}/{title}"
+      "when": { "taxonomy": "article_type", "term": "blog" },
+      "pattern": "/{rule_term}/{title}"
     },
     {
-      "when": { "taxonomy": "activision", "term": "patch_notes" },
-      "pattern": "/patch-notes/{term:franchise}/{term:season}/{title}",
+      "when": { "taxonomy": "article_type", "term": "patch_notes" },
+      "pattern": "/{rule_term}/{term:season}/{title}",
       "label": "Patch notes"
-    },
-    {
-      "when": { "taxonomy": "activision", "term": "guides" },
-      "pattern": "/guides/{term_path:guide_category}/{title}"
     }
   ]
 }
 ```
+
+A blog entry tagged `blog` gets `/blog/my-title`. A patch notes entry tagged `patch_notes` and `season_3` gets `/patch-notes/season-3/my-title`. Until it is tagged with a season, the field shows a warning listing what is still needed and leaves the URL alone.
 
 `when.taxonomy` and `when.term` are UIDs, not display names. When no rule matches, the field lists the entry's tagged terms as `taxonomy_uid › term_uid` so you can copy them.
 
@@ -101,11 +99,13 @@ This example is for one hierarchical taxonomy, `activision`, with an `article_ty
 | `{term_uid}` / `{term_uid:x}` | The term's UID |
 | `{taxonomy}` / `{taxonomy:x}` | The taxonomy's name |
 | `{taxonomy_uid}` / `{taxonomy_uid:x}` | The taxonomy's UID |
+| `{rule_term}` | The term that matched the rule, whichever position it was tagged in |
+| `{rule_term_path}` | The matched term's ancestors, then the term |
 | `{title}` | The entry title |
 | `{field:slug}` | Any root-level text field, by UID |
 | `{locale}` | The entry's locale code |
 
-**Qualifiers.** A term token without a qualifier reads the primary term (the `taxonomyUid` config, else the first term tagged). With a qualifier `x`, the field looks for a tagged term in two ways:
+**Qualifiers.** `{rule_term}` needs none: it is always the term the rule matched on, which is the safe choice for the first segment. A term token without a qualifier reads the primary term (the `taxonomyUid` config, else the first term tagged). With a qualifier `x`, the field looks for a tagged term in two ways:
 
 1. If `x` is a **taxonomy UID**, the entry's first term from that taxonomy. Use this when each concept is its own taxonomy.
 2. Otherwise `x` is treated as a **parent term UID**, and the token reads the tagged term that sits anywhere under it. Use this when one taxonomy holds groups like `article_type`, `franchise` and `season` as top-level terms. `{term_path:x}` then gives only the segments below `x`.

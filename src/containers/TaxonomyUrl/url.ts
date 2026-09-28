@@ -24,6 +24,8 @@ export const TOKENS = {
   term_uid: "the term's UID",
   taxonomy: "the taxonomy's name",
   taxonomy_uid: "the taxonomy's UID",
+  rule_term: "the term that matched the rule",
+  rule_term_path: "the matched term's ancestors, then the term",
   title: "the entry title",
   field: "a root-level text field, {field:slug}",
   locale: "the entry's locale code",
@@ -32,6 +34,9 @@ export const TOKENS = {
 export type TokenKind = keyof typeof TOKENS;
 
 const TERM_KINDS: TokenKind[] = ["term", "term_path", "term_uid", "taxonomy", "taxonomy_uid"];
+const RULE_KINDS: TokenKind[] = ["rule_term", "rule_term_path"];
+/** Slot key used for the term that matched the rule. */
+export const RULE_SLOT = "@rule";
 
 const TOKEN_PATTERN = /\{([a-z_]+)(?::([a-zA-Z0-9_-]+))?\}/g;
 
@@ -115,6 +120,7 @@ export function invalidTokens(pattern: string): string[] {
     .filter((token) => {
       if (!(token.kind in TOKENS)) return true;
       if (token.kind === "field") return !token.qualifier;
+      if (RULE_KINDS.includes(token.kind as TokenKind)) return !!token.qualifier;
       if (token.qualifier) return !TERM_KINDS.includes(token.kind as TokenKind);
       return false;
     })
@@ -139,14 +145,14 @@ export function primaryTerm(refs: TermRef[], taxonomyUid: string): TermRef | nul
 export function selectPattern(
   config: TaxonomyUrlConfig,
   refs: TermRef[]
-): { pattern: string; label: string | null } {
+): { pattern: string; label: string | null; matched: TermRef | null } {
   for (const rule of config.rules) {
     const wanted = Array.isArray(rule.when.term) ? rule.when.term : [rule.when.term];
     const hit = refs.find((ref) => ref.taxonomy_uid === rule.when.taxonomy && wanted.includes(ref.term_uid));
-    if (hit) return { pattern: rule.pattern, label: rule.label ?? `${rule.when.taxonomy}: ${hit.term_uid}` };
+    if (hit) return { pattern: rule.pattern, label: rule.label ?? `${rule.when.taxonomy}: ${hit.term_uid}`, matched: hit };
   }
-  if (config.pattern) return { pattern: config.pattern, label: config.rules.length ? "default" : null };
-  return { pattern: "", label: null };
+  if (config.pattern) return { pattern: config.pattern, label: config.rules.length ? "default" : null, matched: null };
+  return { pattern: "", label: null, matched: null };
 }
 
 export interface TermNeed {
@@ -160,11 +166,13 @@ export interface TermNeed {
 export function termNeeds(pattern: string): TermNeed[] {
   const needs = new Map<string, TermNeed>();
   for (const token of tokensIn(pattern)) {
-    if (!TERM_KINDS.includes(token.kind as TokenKind)) continue;
-    const need = needs.get(token.qualifier) ?? { key: token.qualifier, withTaxonomyName: false, withPath: false };
+    const isRule = RULE_KINDS.includes(token.kind as TokenKind);
+    if (!isRule && !TERM_KINDS.includes(token.kind as TokenKind)) continue;
+    const key = isRule ? RULE_SLOT : token.qualifier;
+    const need = needs.get(key) ?? { key, withTaxonomyName: false, withPath: false };
     if (token.kind === "taxonomy") need.withTaxonomyName = true;
-    if (token.kind === "term_path") need.withPath = true;
-    needs.set(token.qualifier, need);
+    if (token.kind === "term_path" || token.kind === "rule_term_path") need.withPath = true;
+    needs.set(key, need);
   }
   return [...needs.values()];
 }
@@ -201,13 +209,16 @@ export function tokenValues(
   const values: Record<string, string> = {};
   const field = (uid: string): string => (typeof entry[uid] === "string" ? slugify(entry[uid] as string) : "");
   for (const token of tokensIn(pattern)) {
-    const term = terms[token.qualifier] ?? null;
+    const isRule = RULE_KINDS.includes(token.kind as TokenKind);
+    const term = terms[isRule ? RULE_SLOT : token.qualifier] ?? null;
     let value = "";
     switch (token.kind) {
       case "term":
+      case "rule_term":
         value = term ? slugify(term.termName) || slugify(term.termUid) : "";
         break;
       case "term_path":
+      case "rule_term_path":
         value = term ? term.path.map(slugify).filter(Boolean).join("/") : "";
         break;
       case "term_uid":
@@ -251,4 +262,31 @@ export function composeUrl(pattern: string, values: Record<string, string>): { u
     .map((segment) => segment.trim())
     .filter(Boolean);
   return { url: "/" + segments.join("/"), missing };
+}
+
+/** Plain-language reason a token has no value yet, for the "URL not generated" warning. */
+export function describeMissing(raw: string, config: TaxonomyUrlConfig): string {
+  const parsed = tokensIn(raw)[0];
+  if (!parsed) return raw;
+  const q = parsed.qualifier;
+  switch (parsed.kind) {
+    case "term":
+    case "term_path":
+    case "term_uid":
+    case "taxonomy":
+    case "taxonomy_uid":
+      if (q) return `a term under "${q}" (or from a taxonomy with that UID)`;
+      return config.taxonomyUid ? `a term from taxonomy "${config.taxonomyUid}"` : "a taxonomy term";
+    case "rule_term":
+    case "rule_term_path":
+      return "a term that matches one of the rules";
+    case "title":
+      return `the "${config.titleFieldUid}" field`;
+    case "field":
+      return `the "${q}" field`;
+    case "locale":
+      return "the entry locale";
+    default:
+      return raw;
+  }
 }

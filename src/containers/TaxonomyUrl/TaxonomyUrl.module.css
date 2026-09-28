@@ -92,3 +92,23 @@
   border: 1px solid #f5c2c0;
   color: #8a1f1b;
 }
+
+.bannerWarn {
+  background: #fdf1dc;
+  border: 1px solid #f3ddb0;
+  color: #7a5410;
+}
+
+.warnText {
+  color: #b7791f;
+  font-size: 12px;
+}
+
+.list {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.list li {
+  margin: 2px 0;
+}

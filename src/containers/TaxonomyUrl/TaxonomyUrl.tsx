@@ -6,8 +6,10 @@ import { useCurrentBranch } from "../../common/hooks/useCurrentBranch";
 import { TermSource, friendlyApiError, resolveTerm } from "./api";
 import { ResolvedTerm, TaxonomyUrlConfig, TermRef, UrlBreakdown } from "./types";
 import {
+  RULE_SLOT,
   TOKENS,
   composeUrl,
+  describeMissing,
   invalidTokens,
   primaryTerm,
   readConfig,
@@ -116,7 +118,7 @@ const TaxonomyUrl: React.FC = () => {
       const locale = customField.entry.locale || (typeof data.locale === "string" ? data.locale : "");
       const currentUrl = typeof data[config.urlFieldUid] === "string" ? (data[config.urlFieldUid] as string) : "";
       const refs = termRefs(data[config.taxonomyFieldUid]);
-      const { pattern, label } = selectPattern(config, refs);
+      const { pattern, label, matched } = selectPattern(config, refs);
 
       if (!pattern) {
         setBreakdown({ ...EMPTY, locale, tagged: refs, currentUrl });
@@ -155,12 +157,17 @@ const TaxonomyUrl: React.FC = () => {
       await Promise.all(
         needs.map(async (need) => {
           terms[need.key] = null;
-          const ref = need.key ? refForTaxonomy(refs, need.key) : primaryTerm(refs, config.taxonomyUid);
+          const ref =
+            need.key === RULE_SLOT
+              ? matched
+              : need.key
+                ? refForTaxonomy(refs, need.key)
+                : primaryTerm(refs, config.taxonomyUid);
           if (ref) {
             terms[need.key] = await resolveCached(ref, need.withTaxonomyName, need.withPath);
             return;
           }
-          if (!need.key) return;
+          if (!need.key || need.key === RULE_SLOT) return;
           // Not a taxonomy UID: treat the qualifier as a parent term UID.
           const under = termUnder(await taggedWithChains(), need.key);
           if (!under) return;
@@ -258,7 +265,7 @@ const TaxonomyUrl: React.FC = () => {
         ) : (
           termEntries.map(([key, term]) => (
             <React.Fragment key={key || "__primary"}>
-              <dt>{key || (config.taxonomyUid ? config.taxonomyUid : "term")}</dt>
+              <dt>{key === RULE_SLOT ? "rule term" : key || (config.taxonomyUid ? config.taxonomyUid : "term")}</dt>
               <dd>
                 {term ? (
                   <>
@@ -267,7 +274,7 @@ const TaxonomyUrl: React.FC = () => {
                     {term.path.length > 1 && <div className={styles.muted}>{term.path.join(" › ")}</div>}
                   </>
                 ) : (
-                  <span className={styles.muted}>no term from this taxonomy</span>
+                  <span className={styles.warnText}>not tagged yet</span>
                 )}
               </dd>
             </React.Fragment>
@@ -284,11 +291,20 @@ const TaxonomyUrl: React.FC = () => {
       </dl>
 
       {breakdown.missing.length > 0 && (
-        <p className={styles.hint}>Waiting for {breakdown.missing.join(", ")} before building the URL.</p>
+        <div className={`${styles.banner} ${styles.bannerWarn}`}>
+          <strong>URL not generated yet.</strong> This entry still needs:
+          <ul className={styles.list}>
+            {breakdown.missing.map((raw) => (
+              <li key={raw}>
+                {describeMissing(raw, config)} <span className={styles.mono}>{raw}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {!breakdown.pattern && config.rules.length > 0 && (
-        <p className={styles.hint}>
+        <p className={`${styles.banner} ${styles.bannerWarn}`}>
           No rule matched the entry&apos;s terms and no fallback pattern is set, so the URL is left alone. Each
           rule&apos;s <span className={styles.mono}>when</span> must name a taxonomy UID and term UID exactly as
           listed above.
