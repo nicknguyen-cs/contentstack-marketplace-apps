@@ -1,60 +1,165 @@
+/**
+ * Taxonomy URL: a Contentstack custom field that writes the entry's URL
+ * field from the taxonomy terms the editor picks.
+ *
+ * How it fits together:
+ *   - The admin configures a URL pattern (or a list of per-term rules) in the
+ *     field's config JSON. See README.md for the options.
+ *   - Whenever the entry changes, the field builds the URL for it (resolve.ts)
+ *     and, if "Keep URL in sync" is on, writes it into the URL field through
+ *     the App SDK. Editors can turn sync off per entry and apply manually.
+ *   - The field's own value stores only that per-entry sync choice.
+ *
+ * This file is the React layer only. It is organised as:
+ *   1. App SDK handle types      the few SDK members the field uses
+ *   2. Small hooks               management client, sync choice, iframe height
+ *   3. The component             state, the recompute loop, the write path
+ *   4. Presentational pieces     header, term table, warnings
+ */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { client } from "@contentstack/management";
 import styles from "./TaxonomyUrl.module.css";
 import { useAppSdk } from "../../common/hooks/useAppSdk";
 import { useCurrentBranch } from "../../common/hooks/useCurrentBranch";
-import { TermSource, friendlyApiError, resolveTerm } from "./api";
-import { ResolvedTerm, TaxonomyUrlConfig, TermRef, UrlBreakdown } from "./types";
-import {
-  RULE_SLOT,
-  TOKENS,
-  composeUrl,
-  describeMissing,
-  invalidTokens,
-  primaryTerm,
-  readConfig,
-  refForTaxonomy,
-  selectPattern,
-  termNeeds,
-  termRefs,
-  termUnder,
-  tokenValues,
-} from "./url";
+import { TermSource, friendlyApiError } from "./api";
+import { TermCache, buildUrl } from "./resolve";
+import { TaxonomyUrlConfig, UrlBreakdown } from "./types";
+import { RULE_SLOT, TOKENS, describeMissing, invalidTokens, readConfig } from "./url";
+
+/* -------------------------------------------------------------------------- */
+/*  1. App SDK handle types                                                   */
+/* -------------------------------------------------------------------------- */
 
 type EntryData = Record<string, unknown>;
 
-/** The parts of the App SDK's CustomField location this app touches. */
+/**
+ * The parts of `appSdk.location.CustomField` this field uses, typed locally
+ * because the SDK's own types are loose in places.
+ */
 interface CustomFieldHandle {
+  /** The "config" JSON from the content type builder. */
   fieldConfig?: unknown;
-  /** The custom field's own value. Holds the per-entry sync choice ("auto" | "manual"), saved with the entry. */
-  field: { getData(): unknown; setData(data: unknown): Promise<unknown> };
+  /** The custom field's own value. Holds the per-entry sync choice. */
+  field: {
+    getData(): unknown;
+    setData(data: unknown): Promise<unknown>;
+  };
+  /** Controls the iframe Contentstack renders the field in. */
   frame: {
     enableAutoResizing(): unknown;
     disableAutoResizing(): unknown;
     updateHeight(height?: number): Promise<void>;
   };
+  /** The entry being edited. */
   entry: {
     locale?: string;
+    /** The entry's current data, including unsaved edits. */
     getData(): EntryData;
+    /** Fires on every edit to any field. There is no way to unsubscribe. */
     onChange(callback: (data: EntryData) => void): void;
+    /** Access to a sibling field, used here to write the URL field. */
     getField(uid: string): { setData(data: unknown): Promise<unknown> };
   };
 }
 
+/** Stored in the custom field's value. Anything else means "use the config default". */
 type SyncChoice = "auto" | "manual";
 
-/** The saved per-entry sync choice, if any. Anything else means "use the config default". */
-function storedSyncChoice(customField: CustomFieldHandle | null): SyncChoice | null {
-  let value: unknown;
-  try {
-    value = customField?.field.getData();
-  } catch {
-    return null;
-  }
-  return value === "auto" || value === "manual" ? value : null;
+/* -------------------------------------------------------------------------- */
+/*  2. Small hooks                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A Management SDK stack client that runs as the logged-in editor. It is
+ * only used to read taxonomy terms (see api.ts).
+ */
+function useTermSource(): TermSource | null {
+  const appSdk = useAppSdk();
+  const { branchUid } = useCurrentBranch();
+
+  return useMemo(() => {
+    if (!appSdk) return null;
+    const stack = client({ adapter: appSdk.createAdapter(), host: appSdk.endpoints.CMA }).stack({
+      api_key: appSdk.ids.apiKey,
+      ...(branchUid ? { branch_uid: branchUid } : {}),
+    });
+    return stack as unknown as TermSource;
+  }, [appSdk, branchUid]);
 }
 
-const EMPTY: UrlBreakdown = {
+/**
+ * The "Keep URL in sync" toggle. The choice is written to the custom field's
+ * own value, so it is saved with the entry and survives a reload. The config
+ * only provides the default for entries that have not chosen yet.
+ */
+function useSyncChoice(customField: CustomFieldHandle | null, defaultValue: boolean) {
+  const [autoSync, setAutoSync] = useState(defaultValue);
+
+  // A ref mirror lets async code (the recompute loop) read the latest value
+  // without being re-created every time it changes.
+  const autoSyncRef = useRef(autoSync);
+  autoSyncRef.current = autoSync;
+
+  useEffect(() => {
+    let stored: unknown;
+    try {
+      stored = customField?.field.getData();
+    } catch {
+      stored = undefined;
+    }
+    const choice: SyncChoice | null = stored === "auto" || stored === "manual" ? stored : null;
+    setAutoSync(choice ? choice === "auto" : defaultValue);
+  }, [customField, defaultValue]);
+
+  const chooseSync = useCallback(
+    (enabled: boolean) => {
+      setAutoSync(enabled);
+      void customField?.field.setData(enabled ? "auto" : "manual").catch(() => undefined);
+    },
+    [customField]
+  );
+
+  return { autoSync, autoSyncRef, chooseSync };
+}
+
+/**
+ * Keeps the iframe exactly as tall as the field's content.
+ *
+ * Two things work against the SDK's built-in auto-resize here: this repo's
+ * MarketplaceAppProvider pushes a fixed 450px right after the SDK starts, and
+ * the built-in resizer measures the document, which can never be shorter than
+ * the iframe it is in, so a tall frame stays tall. Measuring our own root
+ * element avoids both. The delayed re-pushes make sure the last word is ours.
+ */
+function useFrameHeight(customField: CustomFieldHandle | null, shellRef: React.RefObject<HTMLDivElement>) {
+  useEffect(() => {
+    const shell = shellRef.current;
+    if (!customField || !shell) return;
+
+    customField.frame.disableAutoResizing();
+    const pushHeight = () => {
+      const height = Math.ceil(shell.getBoundingClientRect().height);
+      if (height > 0) void customField.frame.updateHeight(height).catch(() => undefined);
+    };
+
+    const observer = new ResizeObserver(pushHeight);
+    observer.observe(shell);
+    pushHeight();
+    const timers = [300, 1200].map((delay) => window.setTimeout(pushHeight, delay));
+
+    return () => {
+      observer.disconnect();
+      timers.forEach((id) => window.clearTimeout(id));
+    };
+  }, [customField, shellRef]);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  3. The component                                                          */
+/* -------------------------------------------------------------------------- */
+
+const EMPTY_BREAKDOWN: UrlBreakdown = {
   locale: "",
   ruleLabel: null,
   pattern: "",
@@ -65,196 +170,95 @@ const EMPTY: UrlBreakdown = {
   missing: [],
 };
 
-/**
- * "Taxonomy URL" — a custom field that keeps the entry's URL field in step
- * with the taxonomy terms the editor picks. One pattern by default
- * (/{term}/{title}), or an ordered list of rules keyed on a term so one
- * content type can carry several URL schemes.
- *
- * Term names are read through the Management SDK over the App SDK adapter,
- * which runs as the logged-in user. Results are cached per term and locale,
- * so typing in the title never triggers a request.
- */
 const TaxonomyUrl: React.FC = () => {
   const appSdk = useAppSdk();
-  const { branchUid } = useCurrentBranch();
-
+  const termSource = useTermSource();
   const customField = (appSdk?.location?.CustomField as unknown as CustomFieldHandle | null) ?? null;
+
+  // Config is fixed for the life of the field; it comes from the content type.
   const config: TaxonomyUrlConfig = useMemo(() => readConfig(customField?.fieldConfig), [customField]);
-  const badTokens = useMemo(() => {
-    const all = [config.pattern, ...config.rules.map((rule) => rule.pattern)].flatMap(invalidTokens);
-    return [...new Set(all)];
+  const invalidConfigTokens = useMemo(() => {
+    const allPatterns = [config.pattern, ...config.rules.map((rule) => rule.pattern)];
+    return [...new Set(allPatterns.flatMap(invalidTokens))];
   }, [config]);
 
-  const termSource: TermSource | null = useMemo(() => {
-    if (!appSdk) return null;
-    const stack = client({ adapter: appSdk.createAdapter(), host: appSdk.endpoints.CMA }).stack({
-      api_key: appSdk.ids.apiKey,
-      ...(branchUid ? { branch_uid: branchUid } : {}),
-    });
-    return stack as unknown as TermSource;
-  }, [appSdk, branchUid]);
+  const { autoSync, autoSyncRef, chooseSync } = useSyncChoice(customField, config.autoSync);
 
-  // The toggle is stored in the custom field's own value so it survives a
-  // reload and is saved with the entry; the config only supplies the default.
-  const [autoSync, setAutoSync] = useState(config.autoSync);
-  const autoSyncRef = useRef(autoSync);
-  autoSyncRef.current = autoSync;
-  useEffect(() => {
-    const stored = storedSyncChoice(customField);
-    setAutoSync(stored ? stored === "auto" : config.autoSync);
-  }, [customField, config.autoSync]);
-
-  const chooseSync = (enabled: boolean) => {
-    setAutoSync(enabled);
-    void customField?.field.setData(enabled ? "auto" : "manual").catch(() => undefined);
-  };
-
-  const [breakdown, setBreakdown] = useState<UrlBreakdown>(EMPTY);
+  const [breakdown, setBreakdown] = useState<UrlBreakdown>(EMPTY_BREAKDOWN);
   const [error, setError] = useState("");
-  const [lastWrite, setLastWrite] = useState("");
+  const [lastWrittenUrl, setLastWrittenUrl] = useState("");
 
-  const termCache = useRef(new Map<string, Promise<ResolvedTerm>>());
-  /** URL currently being written, so the onChange our own write triggers doesn't write again. */
-  const inFlightRef = useRef<string | null>(null);
-  const runSeq = useRef(0);
+  // One cache per management client, kept across renders.
+  const cacheRef = useRef<TermCache | null>(null);
+  if (termSource && !cacheRef.current) cacheRef.current = new TermCache(termSource);
 
-  const needsApply =
-    breakdown.composedUrl !== "" && breakdown.missing.length === 0 && breakdown.composedUrl !== breakdown.currentUrl;
+  /* ---- Writing the URL field ------------------------------------------- */
+
+  // The URL currently being written. Our own write triggers entry.onChange,
+  // which would otherwise try to write the same value again.
+  const writeInFlight = useRef<string | null>(null);
 
   const writeUrl = useCallback(
     async (url: string, currentUrl: string) => {
-      if (!customField || !url || url === currentUrl || url === inFlightRef.current) return;
-      inFlightRef.current = url;
+      if (!customField || !url) return;
+      if (url === currentUrl || url === writeInFlight.current) return;
+
+      writeInFlight.current = url;
       try {
         await customField.entry.getField(config.urlFieldUid).setData(url);
-        setLastWrite(url);
+        setLastWrittenUrl(url);
         setError("");
       } catch (e) {
         setError(`Could not write "${config.urlFieldUid}": ${friendlyApiError(e)}`);
       } finally {
-        inFlightRef.current = null;
+        writeInFlight.current = null;
       }
     },
     [customField, config.urlFieldUid]
   );
 
+  /* ---- Recomputing on every change --------------------------------------- */
+
+  // Each run gets a sequence number. If the entry changes again while a run
+  // is waiting on the API, the older run's result is thrown away.
+  const runSequence = useRef(0);
+
   const recompute = useCallback(
-    async (data: EntryData) => {
-      if (!customField || !termSource) return;
-      const seq = ++runSeq.current;
+    async (entry: EntryData) => {
+      const cache = cacheRef.current;
+      if (!customField || !cache) return;
+      const thisRun = ++runSequence.current;
 
-      const locale = customField.entry.locale || (typeof data.locale === "string" ? data.locale : "");
-      const currentUrl = typeof data[config.urlFieldUid] === "string" ? (data[config.urlFieldUid] as string) : "";
-      const refs = termRefs(data[config.taxonomyFieldUid]);
-      const { pattern, label, matched } = selectPattern(config, refs);
+      const locale = customField.entry.locale || (typeof entry.locale === "string" ? entry.locale : "");
+      const result = await buildUrl({ config, entry, locale, cache });
+      if (thisRun !== runSequence.current) return;
 
-      if (!pattern) {
-        setBreakdown({ ...EMPTY, locale, tagged: refs, currentUrl });
-        return;
-      }
+      setError(result.errors.join(" "));
+      setBreakdown(result.breakdown);
 
-      // Resolve every term the pattern needs, sharing one cached promise per
-      // term/locale/detail-level so repeated change events cost nothing.
-      const failures: string[] = [];
-      const resolveCached = (ref: TermRef, withTaxonomyName: boolean, withPath: boolean) => {
-        const key = [ref.taxonomy_uid, ref.term_uid, locale, withTaxonomyName, withPath].join("|");
-        let pending = termCache.current.get(key);
-        if (!pending) {
-          pending = resolveTerm(termSource, ref, { locale, withTaxonomyName, withPath });
-          termCache.current.set(key, pending);
-          pending.catch(() => termCache.current.delete(key));
-        }
-        return pending.catch((e) => {
-          failures.push(friendlyApiError(e));
-          return null;
-        });
-      };
-
-      const needs = termNeeds(pattern);
-      const terms: Record<string, ResolvedTerm | null> = {};
-      // Terms fetched with their ancestor chains, only when a qualifier names
-      // a parent term rather than a taxonomy. Shared across such qualifiers.
-      let withChains: Promise<ResolvedTerm[]> | null = null;
-      const taggedWithChains = () => {
-        withChains ??= Promise.all(refs.map((ref) => resolveCached(ref, false, true))).then((list) =>
-          list.filter((term): term is ResolvedTerm => term !== null)
-        );
-        return withChains;
-      };
-
-      await Promise.all(
-        needs.map(async (need) => {
-          terms[need.key] = null;
-          const ref =
-            need.key === RULE_SLOT
-              ? matched
-              : need.key
-                ? refForTaxonomy(refs, need.key)
-                : primaryTerm(refs, config.taxonomyUid);
-          if (ref) {
-            terms[need.key] = await resolveCached(ref, need.withTaxonomyName, need.withPath);
-            return;
-          }
-          if (!need.key || need.key === RULE_SLOT) return;
-          // Not a taxonomy UID: treat the qualifier as a parent term UID.
-          const under = termUnder(await taggedWithChains(), need.key);
-          if (!under) return;
-          if (need.withTaxonomyName) {
-            const named = await resolveCached({ taxonomy_uid: under.taxonomyUid, term_uid: under.termUid }, true, true);
-            terms[need.key] = named ? { ...under, taxonomyName: named.taxonomyName } : under;
-          } else {
-            terms[need.key] = under;
-          }
-        })
-      );
-      if (seq !== runSeq.current) return;
-      setError(failures.join(" "));
-
-      const { url, missing } = composeUrl(pattern, tokenValues(pattern, terms, data, config, locale));
-      const composedUrl = missing.length ? "" : url;
-      setBreakdown({ locale, ruleLabel: label, pattern, terms, tagged: refs, currentUrl, composedUrl, missing });
-
+      const { composedUrl, currentUrl } = result.breakdown;
       if (autoSyncRef.current && composedUrl) void writeUrl(composedUrl, currentUrl);
     },
-    [customField, termSource, config, writeUrl]
+    [customField, config, autoSyncRef, writeUrl]
   );
 
-  // entry.onChange has no off(), so subscribe exactly once and route every
-  // event through a ref to the latest recompute.
+  // entry.onChange cannot be unsubscribed, so subscribe exactly once and send
+  // every event through a ref that always points at the latest recompute.
   const recomputeRef = useRef(recompute);
   recomputeRef.current = recompute;
-  const subscribedRef = useRef(false);
+  const subscribed = useRef(false);
 
   useEffect(() => {
-    if (!customField || subscribedRef.current) return;
-    subscribedRef.current = true;
+    if (!customField || subscribed.current) return;
+    subscribed.current = true;
     void recomputeRef.current(customField.entry.getData());
-    customField.entry.onChange((data) => void recomputeRef.current(data));
+    customField.entry.onChange((entry) => void recomputeRef.current(entry));
   }, [customField]);
 
-  // Size the iframe from the content box, not the document. The SDK's own
-  // auto-resize measures the document, which never shrinks below the frame's
-  // current height, and MarketplaceAppProvider pushes a fixed 450px right
-  // after init. Re-pushing shortly after mount wins over that.
+  /* ---- Layout ------------------------------------------------------------ */
+
   const shellRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const shell = shellRef.current;
-    if (!customField || !shell) return;
-    customField.frame.disableAutoResizing();
-    const push = () => {
-      const height = Math.ceil(shell.getBoundingClientRect().height);
-      if (height > 0) void customField.frame.updateHeight(height).catch(() => undefined);
-    };
-    const observer = new ResizeObserver(push);
-    observer.observe(shell);
-    push();
-    const timers = [300, 1200].map((ms) => window.setTimeout(push, ms));
-    return () => {
-      observer.disconnect();
-      timers.forEach((id) => window.clearTimeout(id));
-    };
-  }, [customField]);
+  useFrameHeight(customField, shellRef);
 
   if (!appSdk) {
     return <div className={styles.shell}>Loading…</div>;
@@ -263,98 +267,30 @@ const TaxonomyUrl: React.FC = () => {
     return <div className={styles.shell}>This app only runs as a custom field.</div>;
   }
 
-  const termEntries = Object.entries(breakdown.terms);
+  const canApply =
+    breakdown.composedUrl !== "" && breakdown.missing.length === 0 && breakdown.composedUrl !== breakdown.currentUrl;
+  const isUpToDate = breakdown.composedUrl !== "" && breakdown.composedUrl === breakdown.currentUrl;
+  const noRuleMatched = !breakdown.pattern && config.rules.length > 0;
 
   return (
     <div className={styles.shell} ref={shellRef}>
-      <div className={styles.header}>
-        <span className={styles.mono}>
-          {breakdown.pattern || <span className={styles.muted}>no pattern applies</span>}
-          {breakdown.ruleLabel && <span className={styles.muted}> · {breakdown.ruleLabel}</span>}
-        </span>
-        <label className={styles.toggle}>
-          <input
-            type="checkbox"
-            checked={autoSync}
-            onChange={(event) => {
-              chooseSync(event.target.checked);
-              if (event.target.checked && breakdown.composedUrl) {
-                void writeUrl(breakdown.composedUrl, breakdown.currentUrl);
-              }
-            }}
-          />
-          Keep URL in sync
-        </label>
-      </div>
+      <Header
+        breakdown={breakdown}
+        autoSync={autoSync}
+        onToggleSync={(enabled) => {
+          chooseSync(enabled);
+          // Turning sync back on applies the current composed URL straight away.
+          if (enabled && breakdown.composedUrl) void writeUrl(breakdown.composedUrl, breakdown.currentUrl);
+        }}
+      />
 
-      {badTokens.length > 0 && (
-        <div className={`${styles.banner} ${styles.bannerError}`}>
-          Invalid token{badTokens.length > 1 ? "s" : ""} in config: {badTokens.join(", ")}. Known tokens:{" "}
-          {Object.keys(TOKENS)
-            .map((t) => `{${t}}`)
-            .join(", ")}
-          ; term tokens take a taxonomy qualifier like {"{term:franchise}"}.
-        </div>
-      )}
+      {invalidConfigTokens.length > 0 && <InvalidTokensBanner tokens={invalidConfigTokens} />}
 
-      <dl className={styles.grid}>
-        {termEntries.length === 0 ? (
-          <>
-            <dt>Tagged</dt>
-            <dd>
-              {breakdown.tagged.length === 0 ? (
-                <span className={styles.muted}>no terms in &quot;{config.taxonomyFieldUid}&quot;</span>
-              ) : (
-                breakdown.tagged.map((ref) => (
-                  <div key={`${ref.taxonomy_uid}/${ref.term_uid}`} className={styles.mono}>
-                    {ref.taxonomy_uid} <span className={styles.muted}>›</span> {ref.term_uid}
-                  </div>
-                ))
-              )}
-            </dd>
-          </>
-        ) : (
-          termEntries.map(([key, term]) => (
-            <React.Fragment key={key || "__primary"}>
-              <dt>{key === RULE_SLOT ? "rule term" : key || (config.taxonomyUid ? config.taxonomyUid : "term")}</dt>
-              <dd>
-                {term ? (
-                  <>
-                    <span>{term.termName}</span>
-                    {!key && <span className={styles.muted}> · {term.taxonomyName || term.taxonomyUid}</span>}
-                    {term.path.length > 1 && <div className={styles.muted}>{term.path.join(" › ")}</div>}
-                  </>
-                ) : (
-                  <span className={styles.warnText}>not tagged yet</span>
-                )}
-              </dd>
-            </React.Fragment>
-          ))
-        )}
+      <TermTable breakdown={breakdown} config={config} />
 
-        <dt>Current URL</dt>
-        <dd className={styles.mono}>{breakdown.currentUrl || <span className={styles.muted}>empty</span>}</dd>
+      {breakdown.missing.length > 0 && <MissingBanner missing={breakdown.missing} config={config} />}
 
-        <dt>Composed URL</dt>
-        <dd className={`${styles.mono} ${styles.strong}`}>
-          {breakdown.composedUrl || <span className={styles.muted}>—</span>}
-        </dd>
-      </dl>
-
-      {breakdown.missing.length > 0 && (
-        <div className={`${styles.banner} ${styles.bannerWarn}`}>
-          <strong>URL not generated yet.</strong> This entry still needs:
-          <ul className={styles.list}>
-            {breakdown.missing.map((raw) => (
-              <li key={raw}>
-                {describeMissing(raw, config)} <span className={styles.mono}>{raw}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {!breakdown.pattern && config.rules.length > 0 && (
+      {noRuleMatched && (
         <div className={`${styles.banner} ${styles.bannerWarn}`}>
           No rule matched the entry&apos;s terms and no fallback pattern is set, so the URL is left alone. Each
           rule&apos;s <span className={styles.mono}>when</span> must name a taxonomy UID and term UID exactly as
@@ -366,16 +302,16 @@ const TaxonomyUrl: React.FC = () => {
         <button
           type="button"
           className={styles.button}
-          disabled={!needsApply}
+          disabled={!canApply}
           onClick={() => void writeUrl(breakdown.composedUrl, breakdown.currentUrl)}
         >
           Apply to {config.urlFieldUid}
         </button>
       )}
 
-      {autoSync && breakdown.composedUrl && breakdown.composedUrl === breakdown.currentUrl && (
+      {autoSync && isUpToDate && (
         <div className={styles.hint}>
-          URL is up to date{lastWrite === breakdown.currentUrl ? " (written by this field)" : ""}.
+          URL is up to date{lastWrittenUrl === breakdown.currentUrl ? " (written by this field)" : ""}.
         </div>
       )}
 
@@ -385,3 +321,111 @@ const TaxonomyUrl: React.FC = () => {
 };
 
 export default TaxonomyUrl;
+
+/* -------------------------------------------------------------------------- */
+/*  4. Presentational pieces                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** The pattern in use, which rule chose it, and the sync toggle. */
+const Header: React.FC<{
+  breakdown: UrlBreakdown;
+  autoSync: boolean;
+  onToggleSync: (enabled: boolean) => void;
+}> = ({ breakdown, autoSync, onToggleSync }) => (
+  <div className={styles.header}>
+    <span className={styles.mono}>
+      {breakdown.pattern || <span className={styles.muted}>no pattern applies</span>}
+      {breakdown.ruleLabel && <span className={styles.muted}> · {breakdown.ruleLabel}</span>}
+    </span>
+    <label className={styles.toggle}>
+      <input type="checkbox" checked={autoSync} onChange={(event) => onToggleSync(event.target.checked)} />
+      Keep URL in sync
+    </label>
+  </div>
+);
+
+/** Shown when the config contains a token the field will never be able to fill. */
+const InvalidTokensBanner: React.FC<{ tokens: string[] }> = ({ tokens }) => (
+  <div className={`${styles.banner} ${styles.bannerError}`}>
+    Invalid token{tokens.length > 1 ? "s" : ""} in config: {tokens.join(", ")}. Known tokens:{" "}
+    {Object.keys(TOKENS)
+      .map((kind) => `{${kind}}`)
+      .join(", ")}
+    ; term tokens take a qualifier like {"{term:season}"}.
+  </div>
+);
+
+/**
+ * The breakdown table. While a pattern is active it lists one row per term
+ * slot; otherwise it lists the raw tags so the admin can see their UIDs.
+ * The current and composed URLs are always shown.
+ */
+const TermTable: React.FC<{ breakdown: UrlBreakdown; config: TaxonomyUrlConfig }> = ({ breakdown, config }) => {
+  const slots = Object.entries(breakdown.terms);
+
+  const slotLabel = (key: string): string => {
+    if (key === RULE_SLOT) return "rule term";
+    if (key === "") return config.taxonomyUid || "term";
+    return key;
+  };
+
+  return (
+    <dl className={styles.grid}>
+      {slots.length === 0 ? (
+        <>
+          <dt>Tagged</dt>
+          <dd>
+            {breakdown.tagged.length === 0 ? (
+              <span className={styles.muted}>no terms in &quot;{config.taxonomyFieldUid}&quot;</span>
+            ) : (
+              breakdown.tagged.map((tag) => (
+                <div key={`${tag.taxonomy_uid}/${tag.term_uid}`} className={styles.mono}>
+                  {tag.taxonomy_uid} <span className={styles.muted}>›</span> {tag.term_uid}
+                </div>
+              ))
+            )}
+          </dd>
+        </>
+      ) : (
+        slots.map(([key, term]) => (
+          <React.Fragment key={key || "__primary"}>
+            <dt>{slotLabel(key)}</dt>
+            <dd>
+              {term ? (
+                <>
+                  <span>{term.termName}</span>
+                  {key === "" && <span className={styles.muted}> · {term.taxonomyName || term.taxonomyUid}</span>}
+                  {term.path.length > 1 && <div className={styles.muted}>{term.path.join(" › ")}</div>}
+                </>
+              ) : (
+                <span className={styles.warnText}>not tagged yet</span>
+              )}
+            </dd>
+          </React.Fragment>
+        ))
+      )}
+
+      <dt>Current URL</dt>
+      <dd className={styles.mono}>{breakdown.currentUrl || <span className={styles.muted}>empty</span>}</dd>
+
+      <dt>Composed URL</dt>
+      <dd className={`${styles.mono} ${styles.strong}`}>
+        {breakdown.composedUrl || <span className={styles.muted}>—</span>}
+      </dd>
+    </dl>
+  );
+};
+
+/** Lists, in plain words, what the editor still has to add before a URL can be written. */
+const MissingBanner: React.FC<{ missing: string[]; config: TaxonomyUrlConfig }> = ({ missing, config }) => (
+  <div className={`${styles.banner} ${styles.bannerWarn}`}>
+    <strong>URL not generated yet.</strong> This entry still needs:
+    <ul className={styles.list}>
+      {missing.map((rawToken) => (
+        <li key={rawToken}>
+          {describeMissing(rawToken, config)} <span className={styles.mono}>{rawToken}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);

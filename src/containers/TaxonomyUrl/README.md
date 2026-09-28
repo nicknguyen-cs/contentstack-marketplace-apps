@@ -135,9 +135,13 @@ Anything outside braces is kept literally. Every value is slugified: lower-cased
 
 ## Files
 
+Read them in this order; each file starts with an overview comment.
+
 | File | Purpose |
 |------|---------|
-| `TaxonomyUrl.tsx` | The field |
-| `url.ts` | Pure helpers: config and rule parsing, slugs, tokens, pattern selection and composition |
-| `api.ts` | Term and taxonomy lookups over the Management SDK |
-| `types.ts` | Shared types |
+| `types.ts` | The data shapes: config, rules, tags, resolved terms, UI state |
+| `url.ts` | Pure helpers with no Contentstack or React: config parsing, tokens, rule selection, slugs, composing the path |
+| `api.ts` | The Management SDK calls that fetch term, taxonomy and ancestor names |
+| `resolve.ts` | `buildUrl`: takes an entry and the config, returns the composed URL and everything the UI shows. Plus the term cache |
+| `TaxonomyUrl.tsx` | The React component: hooks for the SDK client, the sync toggle and iframe height; the recompute loop; the write path; the UI |
+| `TaxonomyUrl.module.css` | Styles |
