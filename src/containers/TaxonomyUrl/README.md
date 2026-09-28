@@ -26,6 +26,8 @@ Add the field to a content type that has a **URL** field and a **taxonomy** fiel
 
 The field shows the pattern in use (and which rule chose it), each term the pattern needs, the URL field's current value and the composed URL.
 
+When no rule matches, the field lists every term the entry is tagged with as `taxonomy_uid › term_uid`. Copy those UIDs into the rule's `when`; they are UIDs, not display names, and must match exactly.
+
 - **Keep URL in sync** (on by default) rewrites the URL field whenever a term or a source field changes. While it is on, manual edits to the URL field are overwritten on the next change.
 - Untick it to stop the automatic writes. An **Apply** button appears when the composed URL differs from the current one.
 - The URL is only written when every token in the pattern has a value. Until then the field says what it is waiting for and leaves the URL alone.

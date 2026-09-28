@@ -35,7 +35,7 @@ const EMPTY: UrlBreakdown = {
   ruleLabel: null,
   pattern: "",
   terms: {},
-  termCount: 0,
+  tagged: [],
   currentUrl: "",
   composedUrl: "",
   missing: [],
@@ -116,7 +116,7 @@ const TaxonomyUrl: React.FC = () => {
       const { pattern, label } = selectPattern(config, refs);
 
       if (!pattern) {
-        setBreakdown({ ...EMPTY, locale, termCount: refs.length, currentUrl });
+        setBreakdown({ ...EMPTY, locale, tagged: refs, currentUrl });
         return;
       }
 
@@ -152,7 +152,7 @@ const TaxonomyUrl: React.FC = () => {
 
       const { url, missing } = composeUrl(pattern, tokenValues(pattern, terms, data, config, locale));
       const composedUrl = missing.length ? "" : url;
-      setBreakdown({ locale, ruleLabel: label, pattern, terms, termCount: refs.length, currentUrl, composedUrl, missing });
+      setBreakdown({ locale, ruleLabel: label, pattern, terms, tagged: refs, currentUrl, composedUrl, missing });
 
       if (autoSyncRef.current && composedUrl) void writeUrl(composedUrl, currentUrl);
     },
@@ -217,13 +217,17 @@ const TaxonomyUrl: React.FC = () => {
       <dl className={styles.grid}>
         {termEntries.length === 0 ? (
           <>
-            <dt>Terms</dt>
+            <dt>Tagged</dt>
             <dd>
-              <span className={styles.muted}>
-                {breakdown.termCount === 0
-                  ? `none selected in "${config.taxonomyFieldUid}"`
-                  : `${breakdown.termCount} tagged, none used by this pattern`}
-              </span>
+              {breakdown.tagged.length === 0 ? (
+                <span className={styles.muted}>no terms in &quot;{config.taxonomyFieldUid}&quot;</span>
+              ) : (
+                breakdown.tagged.map((ref) => (
+                  <div key={`${ref.taxonomy_uid}/${ref.term_uid}`} className={styles.mono}>
+                    {ref.taxonomy_uid} <span className={styles.muted}>›</span> {ref.term_uid}
+                  </div>
+                ))
+              )}
             </dd>
           </>
         ) : (
@@ -260,7 +264,9 @@ const TaxonomyUrl: React.FC = () => {
 
       {!breakdown.pattern && config.rules.length > 0 && (
         <p className={styles.hint}>
-          No rule matched the entry's terms and no fallback pattern is set, so the URL is left alone.
+          No rule matched the entry&apos;s terms and no fallback pattern is set, so the URL is left alone. Each
+          rule&apos;s <span className={styles.mono}>when</span> must name a taxonomy UID and term UID exactly as
+          listed above.
         </p>
       )}
 

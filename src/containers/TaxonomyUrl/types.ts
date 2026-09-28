@@ -62,8 +62,8 @@ export interface UrlBreakdown {
   pattern: string;
   /** Terms the pattern needed, keyed by taxonomy UID. Null when the entry has no term from that taxonomy. */
   terms: Record<string, ResolvedTerm | null>;
-  /** How many terms the entry is tagged with in total. */
-  termCount: number;
+  /** Every term the entry is tagged with, as stored (taxonomy_uid + term_uid). */
+  tagged: TermRef[];
   currentUrl: string;
   composedUrl: string;
   /** Tokens in the pattern that resolved to nothing, so the URL cannot be built yet. */
